@@ -1,11 +1,11 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { getURL } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { translateSupabaseError } from "@/utils/supabase-errors";
-import { getURL } from "@/utils/get-url";
 
 type ViewState = "initial" | "login" | "signup";
 

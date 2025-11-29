@@ -1,8 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, getURL } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { getURL } from "@/utils/get-url";
 import { Button } from "@/components/ui/button";
 import {
   Card,
