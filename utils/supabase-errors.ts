@@ -9,26 +9,11 @@ export const supabaseErrors: Record<string, string> = {
 };
 
 export function translateSupabaseError(error: { code?: string; message: string }): string {
-    // Tenta traduzir pelo código primeiro
     if (error.code && supabaseErrors[error.code]) {
         return supabaseErrors[error.code];
     }
 
-    // Se não tiver código ou não achar, tenta mapear mensagens comuns em inglês
-    const messageLower = error.message.toLowerCase();
 
-    if (messageLower.includes("invalid login credentials")) {
-        return supabaseErrors["invalid_credentials"];
-    }
-    if (messageLower.includes("user not found")) {
-        return supabaseErrors["user_not_found"];
-    }
-    if (messageLower.includes("password should be at least")) {
-        return supabaseErrors["weak_password"];
-    }
-    if (messageLower.includes("user already registered")) {
-        return supabaseErrors["user_already_exists"];
-    }
 
     // Fallback para a mensagem original
     return error.message;
