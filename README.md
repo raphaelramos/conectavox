@@ -35,10 +35,8 @@ O **Conecta Vox** é uma aplicação web projetada para engajar participantes de
 ### Banco de Dados & Segurança
 
 *   **PostgreSQL**: Todo o estado da aplicação é persistido no Supabase.
-*   **RLS (Row Level Security)**: Políticas de segurança rigorosas garantem que usuários só acessem dados permitidos.
-*   **RPCs (Remote Procedure Calls)**: Lógica crítica de pontuação e validação de scans é executada diretamente no banco de dados via funções PostgreSQL para segurança e performance.
-    *   `scan_code`: Valida e processa scans de missões/pontos.
-    *   `scan_user`: Gerencia a lógica de conexão entre usuários.
+*   **RLS**: Políticas de segurança rigorosas garantem que usuários só acessem dados permitidos.
+*   **RPCs**: Lógica crítica de pontuação e validação de scans é executada diretamente no banco de dados via funções PostgreSQL para segurança e performance.
 
 ## Clone and run locally
 
@@ -70,3 +68,33 @@ O **Conecta Vox** é uma aplicação web projetada para engajar participantes de
     ```
 
     Acesse [http://localhost:3000](http://localhost:3000).
+
+## Deployment Supabase
+
+### Push Schema
+```sh
+supabase login
+supabase link
+supabase db push
+```
+
+### Deploy Functions
+
+```sh
+supabase functions deploy process-avatar --use-api
+```
+
+### Vault Secret
+
+```sql
+SELECT vault.create_secret(
+  'https://<project_id>.supabase.co',  -- The secret value
+  'SUPABASE_URL',
+  'Base URL of the Supabase project'
+);
+SELECT vault.create_secret(
+  '<service_role>',
+  'SUPABASE_PRIVATE_KEY',
+  'Private Key'
+);
+```

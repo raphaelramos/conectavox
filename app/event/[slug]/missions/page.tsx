@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, Target, Scan } from "lucide-react";
+import { IMAGES_BUCKET } from "@/utils/constants";
 
 export default async function MissionsPage({
     params,
@@ -54,32 +55,30 @@ export default async function MissionsPage({
                         key={mission.id}
                         className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 transition-all group"
                     >
-                        <div className="flex gap-4 p-4">
-                            <div className="w-20 h-20 bg-muted rounded-xl flex-shrink-0 overflow-hidden">
-                                {mission.image_url ? (
-                                    <Image
-                                        src={mission.image_url}
-                                        alt={mission.name}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-purple-500/10 text-purple-500">
-                                        <Target className="w-8 h-8" />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 space-y-1">
-                                <h3 className="font-semibold text-lg">{mission.name}</h3>
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {mission.description}
-                                </p>
-                                <div className="pt-2">
-                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                                        +{mission.points} pts
-                                    </span>
+                        <div className="w-full h-48 bg-muted relative">
+                            {mission.image_url ? (
+                                <Image
+                                    src={`${IMAGES_BUCKET}/${mission.image_url}`}
+                                    alt={mission.name}
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-purple-500/10 text-purple-500">
+                                    <Target className="w-12 h-12" />
                                 </div>
+                            )}
+                            <div className="absolute top-4 right-4">
+                                <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-primary-foreground shadow-lg">
+                                    +{mission.points} pts
+                                </span>
                             </div>
+                        </div>
+                        <div className="p-4 space-y-2">
+                            <h3 className="font-semibold text-lg">{mission.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {mission.description}
+                            </p>
                         </div>
                     </div>
                 ))}

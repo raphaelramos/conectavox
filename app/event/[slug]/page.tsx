@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { QrCode, Target, Users, Trophy, ChevronLeft, Calendar } from "lucide-react";
+import { IMAGES_BUCKET } from "@/utils/constants";
 
 export default async function EventDashboard({
     params,
@@ -65,7 +66,7 @@ export default async function EventDashboard({
             <div className="relative h-48 md:h-64 w-full bg-muted overflow-hidden">
                 {event.image_url ? (
                     <Image
-                        src={event.image_url}
+                        src={`${IMAGES_BUCKET}/${event.image_url}`}
                         alt={event.name}
                         fill
                         className="object-cover"

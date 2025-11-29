@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ExternalLink, Scan, Users, User } from "lucide-react";
+import { ChevronLeft, Scan, Users, User } from "lucide-react";
+import { AVATARS_BUCKET } from "@/utils/constants";
 
 export default async function ConnectionsPage({
     params,
@@ -57,7 +58,7 @@ export default async function ConnectionsPage({
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden relative shrink-0">
                             {connection.connected_user?.avatar_url ? (
                                 <Image
-                                    src={connection.connected_user.avatar_url}
+                                    src={`${AVATARS_BUCKET}/${connection.connected_user.avatar_url}`}
                                     alt={connection.connected_user.full_name || "Avatar"}
                                     fill
                                     className="object-cover"

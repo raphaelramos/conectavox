@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar, ChevronRight } from "lucide-react";
+import { IMAGES_BUCKET } from "@/utils/constants";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -33,7 +34,7 @@ export default async function Home() {
             <div className="aspect-video w-full bg-muted relative overflow-hidden">
               {event.image_url ? (
                 <Image
-                  src={event.image_url}
+                  src={`${IMAGES_BUCKET}/${event.image_url}`}
                   alt={event.name}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"

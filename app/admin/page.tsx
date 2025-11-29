@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Calendar, ChevronRight, Settings, Trash2 } from "lucide-react";
 import { CreateEventSection } from "@/components/admin/create-event-section";
+import { EventCard } from "@/components/admin/event-card";
 
 export const dynamic = "force-dynamic";
 
@@ -35,36 +36,7 @@ export default async function AdminPage() {
                         </div>
                     ) : (
                         events.map((event) => (
-                            <div
-                                key={event.id}
-                                className="bg-card border border-border/50 rounded-2xl p-4 flex items-center justify-between"
-                            >
-                                <div>
-                                    <h3 className="font-semibold">{event.name}</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        {event.start_date && event.end_date
-                                            ? `${new Date(event.start_date).toLocaleDateString()} - ${new Date(event.end_date).toLocaleDateString()}`
-                                            : "Data não definida"}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Link
-                                        href={`/admin/events/${event.id}`}
-                                        className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm font-medium"
-                                    >
-                                        Gerenciar Conteúdo
-                                    </Link>
-                                    <form action={async () => {
-                                        "use server";
-                                        await deleteEvent(event.id);
-                                        redirect("/admin");
-                                    }}>
-                                        <button className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                            <EventCard key={event.id} event={event} />
                         ))
                     )}
                 </div>

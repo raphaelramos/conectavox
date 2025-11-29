@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createActivity, updateActivity } from "@/app/actions";
-import { uploadImage } from "@/utils/upload-image";
+import { uploadImage, deleteSupabaseFile } from "@/utils/supabase-image";
+import { IMAGES_BUCKET } from "@/utils/constants";
 import { Loader2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -62,11 +63,14 @@ export function ActivityForm({ eventId, type, initialData, onSuccess, redirectUr
         if (!file) return;
 
         setLoading(true);
-        const { path, error } = await uploadImage(file, "images");
+        const { path, error } = await uploadImage(file);
 
         if (error) {
             alert(error);
         } else if (path) {
+            if (imageUrl) {
+                await deleteSupabaseFile(imageUrl);
+            }
             setImageUrl(path);
         }
         setLoading(false);
@@ -131,7 +135,7 @@ export function ActivityForm({ eventId, type, initialData, onSuccess, redirectUr
             {imageUrl && type === "mission" && (
                 <div className="w-full h-32 bg-muted rounded-xl overflow-hidden relative">
                     <Image
-                        src={imageUrl}
+                        src={`${IMAGES_BUCKET}/${imageUrl}`}
                         alt="Preview"
                         fill
                         className="object-cover"

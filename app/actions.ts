@@ -4,8 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { Database } from "@/types/database.types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
-type Mission = Database["public"]["Tables"]["missions"]["Row"];
-type HiddenPoint = Database["public"]["Tables"]["hidden_points"]["Row"];
 type Connection = Database["public"]["Tables"]["connections"]["Row"] & {
     connected_user: Database["public"]["Tables"]["profiles"]["Row"] | null;
 };
@@ -150,6 +148,7 @@ export async function updateProfile(formData: FormData) {
     const full_name = formData.get("name") as string;
     let instagram = formData.get("instagram") as string;
     let tiktok = formData.get("tiktok") as string;
+    const avatar_url = formData.get("avatar_url") as string;
 
     // Sanitize inputs: remove @ and full URLs, keep only username
     if (instagram) {
@@ -159,9 +158,29 @@ export async function updateProfile(formData: FormData) {
         tiktok = tiktok.replace(/^@/, "").replace(/^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@?/, "").split("/")[0];
     }
 
+    const updates: any = { full_name, instagram, tiktok };
+    if (avatar_url) updates.avatar_url = avatar_url;
+
     const { error } = await (supabase
         .from("profiles") as any)
-        .update({ full_name, instagram, tiktok })
+        .update(updates)
+        .eq("id", user.id);
+
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+export async function updateAvatar(avatar_url: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Not authenticated" };
+
+    const { error } = await (supabase
+        .from("profiles") as any)
+        .update({ avatar_url })
         .eq("id", user.id);
 
     if (error) return { error: error.message };
@@ -223,10 +242,6 @@ export async function updateEvent(
     const image_url = formData.get("image_url") as string;
     const start_date = formData.get("start_date") as string;
     const end_date = formData.get("end_date") as string;
-    // We probably don't want to update the slug automatically as it breaks URLs, 
-    // or maybe we do but it's risky. For now, let's keep slug as is or update it if name changes? 
-    // Usually changing slug breaks SEO and links. Let's NOT update slug for now unless explicitly requested.
-
     const updates: any = { name, description, start_date, end_date };
     if (image_url) updates.image_url = image_url;
 

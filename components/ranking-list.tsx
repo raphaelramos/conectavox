@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { getRanking } from "@/app/actions";
 import { Database } from "@/types/database.types";
+import { AVATARS_BUCKET } from "@/utils/constants";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -67,7 +68,7 @@ export function RankingList({ initialRanking, eventId, currentUserId }: Props) {
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 relative">
                             {entry.user?.avatar_url ? (
                                 <Image
-                                    src={entry.user.avatar_url}
+                                    src={`${AVATARS_BUCKET}/${entry.user.avatar_url}`}
                                     alt={entry.user.full_name || "User"}
                                     fill
                                     className="object-cover"

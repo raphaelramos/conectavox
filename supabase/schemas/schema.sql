@@ -45,13 +45,6 @@ create policy "Events are viewable by everyone."
   on events for select
   using ( true );
 
--- Only admins can insert/update/delete events (We will define admin via a separate table or role later, for now, allow authenticated for demo or restrict)
--- For this MVP, let's assume a specific user ID or just open for now and user will restrict later, OR better:
--- Create an 'admins' table or check email. Let's stick to a simple policy:
--- "Admins" can be anyone with a specific email domain or just manual insert for now.
--- Let's allow read only for public, and write for service_role (admin dashboard will use service role or we add an admin flag to profiles).
--- Adding is_admin to profiles for simplicity.
-
 -- USER ROLES
 create table public.user_roles (
   user_id uuid references auth.users on delete cascade not null,
@@ -150,8 +143,6 @@ create policy "Users can view their own scans."
 
 
 -- FUNCTIONS FOR SCORING
-
--- Unified Scan Function
 create or replace function process_scan(
   p_event_id uuid,
   p_code text
@@ -182,6 +173,11 @@ begin
     return json_build_object('success', false, 'message', 'Invalid QR Code format');
   end;
 
+  -- Prevent user from scanning their own QR code
+  if v_code_uuid = v_user_id then
+    return json_build_object('success', false, 'message', 'Você não pode escanear seu próprio QR Code!');
+  end if;
+
   -- 1. Try Activity (Mission or Hidden Point)
   select points, type, name into v_mission_points, v_type, v_name
   from activities
@@ -209,10 +205,6 @@ begin
   -- 3. Try User Connection
   if exists (select 1 from profiles where id = v_code_uuid) then
     v_target_user_id := v_code_uuid;
-
-    if v_user_id = v_target_user_id then
-      return json_build_object('success', false, 'message', 'Você não pode se conectar com você mesmo!');
-    end if;
 
     -- Check if connection already exists
     if exists (select 1 from connections where user_id = v_user_id and connected_user_id = v_target_user_id and event_id = p_event_id) then
