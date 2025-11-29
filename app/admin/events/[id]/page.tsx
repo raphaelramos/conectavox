@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronLeft, Plus, Trash2, Edit, QrCode } from "lucide-react";
 import { ActivityForm } from "@/components/admin/activity-form";
 
+import { ActivityQRDialog } from "@/components/admin/activity-qr-dialog";
+
 export default async function EventAdminPage({
     params,
 }: {
@@ -96,6 +98,11 @@ export default async function EventAdminPage({
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ActivityQRDialog
+                                        name={mission.name}
+                                        identifier={mission.identifier}
+                                        points={mission.points}
+                                    />
                                     <Link
                                         href={`/admin/events/${id}/activities/${mission.id}`}
                                         className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
@@ -142,6 +149,11 @@ export default async function EventAdminPage({
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ActivityQRDialog
+                                        name={point.name}
+                                        identifier={point.identifier}
+                                        points={point.points}
+                                    />
                                     <Link
                                         href={`/admin/events/${id}/activities/${point.id}`}
                                         className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
