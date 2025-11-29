@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { translateSupabaseError } from "@/utils/supabase-errors";
+import { getURL } from "@/utils/get-url";
 
 type ViewState = "initial" | "login" | "signup";
 
@@ -31,7 +32,7 @@ export default function LoginPage() {
                     email,
                     password,
                     options: {
-                        emailRedirectTo: `${location.origin}/auth/callback`,
+                        emailRedirectTo: `${getURL()}auth/callback`,
                         data: {
                             full_name: name,
                         },
@@ -98,7 +99,7 @@ export default function LoginPage() {
                                     const { error } = await supabase.auth.signInWithOAuth({
                                         provider: 'google',
                                         options: {
-                                            redirectTo: `${location.origin}/auth/callback`,
+                                            redirectTo: `${getURL()}auth/callback`,
                                         },
                                     });
                                     if (error) throw error;
