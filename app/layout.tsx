@@ -4,12 +4,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { TopBar } from "@/components/top-bar";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
   title: "Conecta Vox",
   description: "Conecte-se, complete missões e ganhe pontos.",
 };

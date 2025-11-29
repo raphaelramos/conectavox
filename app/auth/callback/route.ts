@@ -6,7 +6,12 @@ export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get("code");
     // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get("next") ?? "/";
+    let next = searchParams.get("next") ?? "/";
+    
+    // Ensure next is a relative URL
+    if (!next.startsWith("/")) {
+        next = "/";
+    }
 
     if (code) {
         const cookieStore = await cookies();
@@ -34,7 +39,19 @@ export async function GET(request: Request) {
         );
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
-            return NextResponse.redirect(`${origin}${next}`);
+            // Get the forwarded host for Vercel deployments
+            const forwardedHost = request.headers.get("x-forwarded-host");
+            const isLocalEnv = process.env.NODE_ENV === "development";
+            
+            if (isLocalEnv) {
+                // In local dev, no load balancer, use origin directly
+                return NextResponse.redirect(`${origin}${next}`);
+            } else if (forwardedHost) {
+                // In production with Vercel, use the forwarded host
+                return NextResponse.redirect(`https://${forwardedHost}${next}`);
+            } else {
+                return NextResponse.redirect(`${origin}${next}`);
+            }
         }
     }
 
