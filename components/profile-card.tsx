@@ -130,6 +130,14 @@ export function ProfileCard({ user }: Props) {
                                     className="bg-muted px-2 py-1 rounded-md w-full text-sm"
                                     placeholder="TikTok"
                                 />
+                                <button
+                                    onClick={handleSaveProfile}
+                                    disabled={loading}
+                                    className="w-full mt-4 bg-primary text-white py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors font-medium"
+                                >
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    Salvar
+                                </button>
                             </div>
                         ) : (
                             <div className="flex flex-col text-sm text-muted-foreground">
@@ -157,13 +165,14 @@ export function ProfileCard({ user }: Props) {
                         )}
                     </div>
                 </div>
-                <button
-                    onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-                    className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
-                    disabled={loading}
-                >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isEditing ? <Save className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />)}
-                </button>
+                {!isEditing && (
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
+                    >
+                        <Edit2 className="w-5 h-5" />
+                    </button>
+                )}
             </div>
 
             {/* QR Code */}
