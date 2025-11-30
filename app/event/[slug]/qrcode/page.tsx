@@ -1,13 +1,9 @@
 import { getEventBySlug, getProfile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import dynamic from "next/dynamic";
+import { QRCodeView } from "@/components/qrcode-view";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-
-const QRCodeView = dynamic(() => import("@/components/qrcode-view").then(mod => mod.QRCodeView), {
-    ssr: false,
-});
 
 export default async function QRCodePage({
     params,

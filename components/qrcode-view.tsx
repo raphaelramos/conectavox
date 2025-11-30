@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import type { Html5Qrcode } from "html5-qrcode";
 import { processScan } from "@/app/actions";
 import { Camera, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -51,38 +51,42 @@ export function QRCodeView({ user, event }: Props) {
     useEffect(() => {
         if (mode !== "scan") return;
 
-        const html5QrCode = new Html5Qrcode("reader");
-        scannerRef.current = html5QrCode;
+        let html5QrCode: Html5Qrcode;
 
-        const qrCodeSuccessCallback = async (decodedText: string) => {
-            await html5QrCode.stop();
-            setMode("view");
+        import("html5-qrcode").then(({ Html5Qrcode }) => {
+            html5QrCode = new Html5Qrcode("reader");
+            scannerRef.current = html5QrCode;
 
-            try {
-                const code = extractIdentifierFromUrl(decodedText);
+            const qrCodeSuccessCallback = async (decodedText: string) => {
+                await html5QrCode.stop();
+                setMode("view");
 
-                if (!code) {
-                    setScanResult({ success: false, message: "QR Code inválido. Código não encontrado." });
-                    return;
+                try {
+                    const code = extractIdentifierFromUrl(decodedText);
+
+                    if (!code) {
+                        setScanResult({ success: false, message: "QR Code inválido. Código não encontrado." });
+                        return;
+                    }
+
+                    const res = await processScan(event.id, code);
+                    setScanResult(res);
+                    if (res.success) {
+                        router.refresh();
+                    }
+                } catch {
+                    setScanResult({ success: false, message: "Erro ao processar QR Code. Tente novamente." });
                 }
+            };
 
-                const res = await processScan(event.id, code);
-                setScanResult(res);
-                if (res.success) {
-                    router.refresh();
-                }
-            } catch {
-                setScanResult({ success: false, message: "Erro ao processar QR Code. Tente novamente." });
-            }
-        };
-
-        html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 15, qrbox: { width: 250, height: 250 } },
-            qrCodeSuccessCallback,
-            () => {}
-        ).catch((err) => {
-            console.error("Camera start error:", err);
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 15, qrbox: { width: 250, height: 250 } },
+                qrCodeSuccessCallback,
+                () => {}
+            ).catch((err) => {
+                console.error("Camera start error:", err);
+            });
         });
 
         return () => {
