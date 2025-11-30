@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import type { Html5Qrcode } from "html5-qrcode";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { processScan } from "@/app/actions";
 import { Camera, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ProfileCard } from "./profile-card";
 
 import { Database } from "@/types/database.types";
+
+// SSR-safe import
+const Scanner = dynamic(
+    () => import("@yudiel/react-qr-scanner").then((mod) => mod.Scanner),
+    { ssr: false }
+);
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Event = Database["public"]["Tables"]["events"]["Row"];
@@ -45,54 +51,38 @@ function extractIdentifierFromUrl(value: string): string {
 export function QRCodeView({ user, event }: Props) {
     const [mode, setMode] = useState<"view" | "scan">("view");
     const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
-    const scannerRef = useRef<Html5Qrcode | null>(null);
 
-    useEffect(() => {
-        if (mode !== "scan") return;
+    const handleScan = async (detectedCodes: { rawValue: string }[]) => {
+        if (isProcessing || detectedCodes.length === 0) return;
+        
+        setIsProcessing(true);
+        setMode("view");
 
-        let html5QrCode: Html5Qrcode;
+        try {
+            const decodedText = detectedCodes[0].rawValue;
+            // Extract identifier from URL - get the last segment after the final slash
+            const code = extractIdentifierFromUrl(decodedText);
 
-        import("html5-qrcode").then(({ Html5Qrcode }) => {
-            html5QrCode = new Html5Qrcode("reader");
-            scannerRef.current = html5QrCode;
+            if (!code) {
+                setScanResult({ success: false, message: "QR Code inválido. Código não encontrado." });
+                setIsProcessing(false);
+                return;
+            }
 
-            const qrCodeSuccessCallback = async (decodedText: string) => {
-                await html5QrCode.stop();
-                setMode("view");
-
-                try {
-                    const code = extractIdentifierFromUrl(decodedText);
-
-                    if (!code) {
-                        setScanResult({ success: false, message: "QR Code inválido. Código não encontrado." });
-                        return;
-                    }
-
-                    const res = await processScan(event.id, code);
-                    setScanResult(res);
-                    if (res.success) {
-                        router.refresh();
-                    }
-                } catch {
-                    setScanResult({ success: false, message: "Erro ao processar QR Code. Tente novamente." });
-                }
-            };
-
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 15, qrbox: { width: 250, height: 250 } },
-                qrCodeSuccessCallback,
-                () => {}
-            ).catch((err) => {
-                console.error("Camera start error:", err);
-            });
-        });
-
-        return () => {
-            scannerRef.current?.stop().catch(() => {});
-        };
-    }, [mode, event.id, router]);
+            // Use unified processScan
+            const res = await processScan(event.id, code);
+            setScanResult(res);
+            if (res.success) {
+                router.refresh();
+            }
+        } catch {
+            setScanResult({ success: false, message: "Erro ao processar QR Code. Tente novamente." });
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     return (
         <div className="max-w-md mx-auto space-y-8">
@@ -129,7 +119,16 @@ export function QRCodeView({ user, event }: Props) {
                             <X className="w-6 h-6" />
                         </button>
                     </div>
-                    <div id="reader" className="rounded-3xl overflow-hidden border-2 border-primary/50 shadow-2xl" />
+                    <div className="rounded-3xl overflow-hidden border-2 border-primary/50 shadow-2xl">
+                        <Scanner
+                            onScan={handleScan}
+                            onError={(error) => console.error("Scanner error:", error)}
+                            constraints={{ facingMode: "environment" }}
+                            formats={["qr_code"]}
+                            components={{ finder: true }}
+                            styles={{ container: { borderRadius: "1.5rem" } }}
+                        />
+                    </div>
                     <p className="text-center text-sm text-muted-foreground">
                         Aponte sua câmera para o QR Code.
                     </p>
