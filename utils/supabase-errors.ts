@@ -1,3 +1,5 @@
+import { AuthError, PostgrestError } from "@supabase/supabase-js";
+
 export const supabaseErrors: Record<string, string> = {
     "invalid_credentials": "Email ou senha incorretos. Verifique suas credenciais.",
     "email_not_confirmed": "Email não confirmado. Verifique sua caixa de entrada.",
@@ -8,13 +10,23 @@ export const supabaseErrors: Record<string, string> = {
     "over_email_send_rate_limit": "Muitas tentativas de envio de email. Tente novamente mais tarde.",
 };
 
-export function translateSupabaseError(error: { code?: string; message: string }): string {
-    if (error.code && supabaseErrors[error.code]) {
-        return supabaseErrors[error.code];
+export function translateSupabaseError(error: AuthError | PostgrestError | unknown): string {
+    if (!error) return "Ocorreu um erro desconhecido.";
+
+    if (typeof error === 'object' && 'message' in error) {
+        const err = error as { code?: string; message: string };
+
+        // Check for specific error codes in our dictionary
+        if (err.code && supabaseErrors[err.code]) {
+            return supabaseErrors[err.code];
+        }
+
+        if (supabaseErrors[err.message]) {
+            return supabaseErrors[err.message];
+        }
+
+        return err.message;
     }
 
-
-
-    // Fallback para a mensagem original
-    return error.message;
+    return "Ocorreu um erro desconhecido.";
 }

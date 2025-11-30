@@ -55,7 +55,7 @@ export default function LoginPage() {
                 router.refresh();
                 router.push("/");
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(translateSupabaseError(err));
         } finally {
             setLoading(false);
@@ -103,7 +103,7 @@ export default function LoginPage() {
                                         },
                                     });
                                     if (error) throw error;
-                                } catch (err: any) {
+                                } catch (err: unknown) {
                                     setError(translateSupabaseError(err));
                                     setLoading(false);
                                 }

@@ -8,9 +8,14 @@ import { Loader2, Edit2, Save, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { uploadImage, getPublicImageUrl, deleteSupabaseFile } from "@/utils/supabase-image";
 import { AVATARS_BUCKET } from "@/utils/constants";
+import { getURL } from "@/lib/utils";
+
+import { Database } from "@/types/database.types";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface Props {
-    user: any;
+    user: Profile;
 }
 
 export function ProfileCard({ user }: Props) {
@@ -165,10 +170,9 @@ export function ProfileCard({ user }: Props) {
             <div className="flex flex-col items-center gap-4 py-4">
                 <div className="p-4 bg-white rounded-3xl shadow-lg">
                     <QRCodeSVG
-                        value={user.id}
-                        size={250}
+                        value={`${getURL()}code/${user.id}`}
+                        size={200}
                         level="H"
-
                     />
                 </div>
                 <p className="text-sm text-muted-foreground text-center">

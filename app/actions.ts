@@ -12,6 +12,11 @@ type RankingEntry = {
     user: Database["public"]["Tables"]["profiles"]["Row"] | null;
 };
 
+type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
+type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
+type ActivityUpdate = Database["public"]["Tables"]["activities"]["Update"];
+
+
 export async function getEvents() {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -54,7 +59,7 @@ export async function getUserPoints(eventId: string) {
         .single();
 
     if (error) return 0;
-    return (data as any).points;
+    return data?.points ?? 0;
 }
 
 
@@ -111,7 +116,7 @@ export async function processScan(eventId: string, codeIdentifier: string) {
     const { data, error } = await supabase.rpc("process_scan", {
         p_event_id: eventId,
         p_code: codeIdentifier,
-    } as any);
+    });
 
     if (error) {
         return { success: false, message: error.message };
@@ -158,11 +163,11 @@ export async function updateProfile(formData: FormData) {
         tiktok = tiktok.replace(/^@/, "").replace(/^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@?/, "").split("/")[0];
     }
 
-    const updates: any = { full_name, instagram, tiktok };
+    const updates: ProfileUpdate = { full_name, instagram, tiktok };
     if (avatar_url) updates.avatar_url = avatar_url;
 
-    const { error } = await (supabase
-        .from("profiles") as any)
+    const { error } = await supabase
+        .from("profiles")
         .update(updates)
         .eq("id", user.id);
 
@@ -178,8 +183,8 @@ export async function updateAvatar(avatar_url: string) {
 
     if (!user) return { error: "Not authenticated" };
 
-    const { error } = await (supabase
-        .from("profiles") as any)
+    const { error } = await supabase
+        .from("profiles")
         .update({ avatar_url })
         .eq("id", user.id);
 
@@ -220,8 +225,8 @@ export async function createEvent(
     const end_date = formData.get("end_date") as string;
     const slug = name.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
 
-    const { data, error } = await (supabase
-        .from("events") as any)
+    const { data, error } = await supabase
+        .from("events")
         .insert({ name, description, image_url, start_date, end_date, slug })
         .select("id")
         .single();
@@ -242,11 +247,11 @@ export async function updateEvent(
     const image_url = formData.get("image_url") as string;
     const start_date = formData.get("start_date") as string;
     const end_date = formData.get("end_date") as string;
-    const updates: any = { name, description, start_date, end_date };
+    const updates: EventUpdate = { name, description, start_date, end_date };
     if (image_url) updates.image_url = image_url;
 
-    const { error } = await (supabase
-        .from("events") as any)
+    const { error } = await supabase
+        .from("events")
         .update(updates)
         .eq("id", id);
 
@@ -259,7 +264,7 @@ export async function deleteEvent(
 ): Promise<{ error: string } | { success: true }> {
     if (!(await isAdmin())) return { error: "Unauthorized" };
     const supabase = await createClient();
-    const { error } = await (supabase.from("events") as any).delete().eq("id", id);
+    const { error } = await supabase.from("events").delete().eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
 }
@@ -318,8 +323,8 @@ export async function createActivity(
     const points = parseInt(formData.get("points") as string);
     const image_url = formData.get("image_url") as string;
 
-    const { error } = await (supabase
-        .from("activities") as any)
+    const { error } = await supabase
+        .from("activities")
         .insert({ event_id, type, name, description, points, image_url });
 
     if (error) return { error: error.message };
@@ -338,11 +343,11 @@ export async function updateActivity(
     const points = parseInt(formData.get("points") as string);
     const image_url = formData.get("image_url") as string;
 
-    const updates: any = { name, description, points };
+    const updates: ActivityUpdate = { name, description, points };
     if (image_url) updates.image_url = image_url;
 
-    const { error } = await (supabase
-        .from("activities") as any)
+    const { error } = await supabase
+        .from("activities")
         .update(updates)
         .eq("id", id);
 
@@ -355,7 +360,81 @@ export async function deleteActivity(
 ): Promise<{ error: string } | { success: true }> {
     if (!(await isAdmin())) return { error: "Unauthorized" };
     const supabase = await createClient();
-    const { error } = await (supabase.from("activities") as any).delete().eq("id", id);
+    const { error } = await supabase.from("activities").delete().eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
+}
+
+export async function processCodeScan(code: string) {
+    const supabase = await createClient();
+
+    if (!code || code.trim() === "") {
+        return { success: false, message: "Código não informado." };
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(code)) {
+        return { success: false, message: "Formato de código inválido." };
+    }
+
+    // Check if user is authenticated
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+        return { success: false, message: "Você precisa estar logado para escanear códigos." };
+    }
+
+    // 1. Check if it's an Activity (Mission/Hidden Point)
+    const { data: activity, error: activityError } = await supabase
+        .from("activities")
+        .select("event_id")
+        .eq("identifier", code)
+        .single();
+
+    if (activityError && activityError.code !== "PGRST116") {
+        return { success: false, message: "Erro ao verificar atividade. Tente novamente." };
+    }
+
+    if (activity) {
+        return processScan(activity.event_id, code);
+    }
+
+    // 2. Check if it's a User (Connection)
+    const { data: userProfile, error: userError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", code)
+        .single();
+
+    if (userError && userError.code !== "PGRST116") {
+        return { success: false, message: "Erro ao verificar usuário. Tente novamente." };
+    }
+
+    if (userProfile) {
+        // Check if user is trying to scan their own code
+        if (userProfile.id === currentUser.id) {
+            return { success: false, message: "Você não pode escanear seu próprio QR Code." };
+        }
+
+        const now = new Date().toISOString();
+        const { data: events, error: eventsError } = await supabase
+            .from("events")
+            .select("id")
+            .lte("start_date", now)
+            .gte("end_date", now)
+            .limit(1);
+
+        if (eventsError) {
+            return { success: false, message: "Erro ao buscar eventos ativos. Tente novamente." };
+        }
+
+        if (!events || events.length === 0) {
+            return { success: false, message: "Nenhum evento ativo no momento para realizar conexão." };
+        }
+
+        const eventId = events[0].id;
+        return processScan(eventId, code);
+    }
+
+    return { success: false, message: "Código não encontrado. Verifique se o QR Code é válido." };
 }

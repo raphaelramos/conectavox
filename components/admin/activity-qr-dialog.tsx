@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Download, QrCode, X } from "lucide-react";
+import { getURL } from "@/lib/utils";
 
 interface Props {
     name: string;
@@ -14,6 +15,8 @@ export function ActivityQRDialog({ name, identifier, points }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const qrRef = useRef<HTMLCanvasElement>(null);
     const qrHighResRef = useRef<HTMLCanvasElement>(null);
+
+    const qrValue = `${getURL()}code/${identifier}`;
 
     const downloadQR = () => {
         if (!qrHighResRef.current) return;
@@ -53,81 +56,67 @@ export function ActivityQRDialog({ name, identifier, points }: Props) {
         document.body.removeChild(link);
     };
 
-    if (!isOpen) {
-        return (
-            <>
-                <button
-                    onClick={() => setIsOpen(true)}
-                    className="p-2 rounded-xl bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-colors"
-                    title="Ver QR Code"
-                >
-                    <QrCode className="w-4 h-4" />
-                </button>
-
-                {/* Hidden High Res QR for generation */}
-                <div style={{ display: "none" }}>
-                    <QRCodeCanvas
-                        ref={qrHighResRef}
-                        value={identifier}
-                        size={2600}
-                        level="H"
-                        marginSize={2}
-                        bgColor="transparent"
-                        fgColor="#000000"
-                    />
-                </div>
-            </>
-        );
-    }
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-background rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-200">
-                <button
-                    onClick={() => setIsOpen(false)}
-                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
-                >
-                    <X className="w-5 h-5" />
-                </button>
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="p-2 rounded-xl bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-colors"
+                title="Ver QR Code"
+            >
+                <QrCode className="w-4 h-4" />
+            </button>
 
-                <div className="text-center space-y-6">
-                    <div>
-                        <h3 className="text-xl font-bold">{name}</h3>
-                        <p className="text-muted-foreground">+{points} pontos</p>
-                    </div>
-
-                    <div className="flex justify-center p-4 bg-white rounded-2xl shadow-inner">
-                        <QRCodeCanvas
-                            ref={qrRef}
-                            value={identifier}
-                            size={200}
-                            level="H"
-                            marginSize={2}
-                        />
-                    </div>
-
-                    <button
-                        onClick={downloadQR}
-                        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                    >
-                        <Download className="w-5 h-5" />
-                        Baixar QR Code
-                    </button>
-                </div>
-
-                {/* Hidden High Res QR for generation (also needed here if dialog is open) */}
-                <div style={{ display: "none" }}>
-                    <QRCodeCanvas
-                        ref={qrHighResRef}
-                        value={identifier}
-                        size={2600}
-                        level="H"
-                        marginSize={2}
-                        bgColor="transparent"
-                        fgColor="#000000"
-                    />
-                </div>
+            {/* Hidden High Res QR for generation */}
+            <div style={{ display: "none" }}>
+                <QRCodeCanvas
+                    ref={qrHighResRef}
+                    value={qrValue}
+                    size={2600}
+                    level="H"
+                    marginSize={2}
+                    bgColor="transparent"
+                    fgColor="#000000"
+                />
             </div>
-        </div>
+
+            {/* Modal */}
+            {isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-background rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-200">
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="text-center space-y-6">
+                            <div>
+                                <h3 className="text-xl font-bold">{name}</h3>
+                                <p className="text-muted-foreground">+{points} pontos</p>
+                            </div>
+
+                            <div className="flex justify-center p-4 bg-white rounded-2xl shadow-inner">
+                                <QRCodeCanvas
+                                    ref={qrRef}
+                                    value={qrValue}
+                                    size={200}
+                                    level="H"
+                                    marginSize={2}
+                                />
+                            </div>
+
+                            <button
+                                onClick={downloadQR}
+                                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                            >
+                                <Download className="w-5 h-5" />
+                                Baixar QR Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

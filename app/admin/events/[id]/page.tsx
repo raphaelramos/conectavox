@@ -1,9 +1,9 @@
-import { getEventBySlug, getActivities, deleteActivity } from "@/app/actions";
+import { getActivities, deleteActivity } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Plus, Trash2, Edit, QrCode } from "lucide-react";
-import { ActivityForm } from "@/components/admin/activity-form";
+import { CreateActivityForm } from "@/components/admin/create-activity-form";
 
 import { ActivityQRDialog } from "@/components/admin/activity-qr-dialog";
 
@@ -32,7 +32,7 @@ export default async function EventAdminPage({
         return <div>Event not found</div>;
     }
 
-    const event = eventData as any;
+    const event = eventData;
 
     const missions = await getActivities(id, "mission");
     const hiddenPoints = await getActivities(id, "hidden_point");
@@ -81,9 +81,7 @@ export default async function EventAdminPage({
                         </span>
                     </div>
 
-                    <div className="bg-card border border-border/50 rounded-3xl p-6">
-                        <ActivityForm eventId={id} type="mission" />
-                    </div>
+                    <CreateActivityForm eventId={id} type="mission" />
 
                     <div className="space-y-4">
                         {missions.map((mission) => (
@@ -132,9 +130,7 @@ export default async function EventAdminPage({
                         </span>
                     </div>
 
-                    <div className="bg-card border border-border/50 rounded-3xl p-6">
-                        <ActivityForm eventId={id} type="hidden_point" />
-                    </div>
+                    <CreateActivityForm eventId={id} type="hidden_point" />
 
                     <div className="space-y-4">
                         {hiddenPoints.map((point) => (

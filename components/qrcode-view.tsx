@@ -1,66 +1,104 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { useState, useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import { processScan } from "@/app/actions";
 import { Camera, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ProfileCard } from "./profile-card";
 
+import { Database } from "@/types/database.types";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Event = Database["public"]["Tables"]["events"]["Row"];
+
+interface ScanResult {
+    success: boolean;
+    message: string;
+    points?: number;
+}
+
 interface Props {
-    user: any;
-    event: any;
+    user: Profile;
+    event: Event;
+}
+
+/**
+ * Extracts the identifier from a QR code value.
+ * If the value is a URL, returns the last segment after the final slash.
+ * Otherwise, returns the value as-is.
+ */
+function extractIdentifierFromUrl(value: string): string {
+    if (!value) {
+        return "";
+    }
+
+    // If it contains a slash, extract the last segment
+    if (value.includes("/")) {
+        const segments = value.split("/").filter(Boolean);
+        return segments[segments.length - 1] || "";
+    }
+
+    return value;
 }
 
 export function QRCodeView({ user, event }: Props) {
     const [mode, setMode] = useState<"view" | "scan">("view");
-    const [loading, setLoading] = useState(false);
-    const [scanResult, setScanResult] = useState<{
-        success: boolean;
-        message: string;
-        points?: number;
-    } | null>(null);
+    const [scanResult, setScanResult] = useState<ScanResult | null>(null);
     const router = useRouter();
+    const scannerRef = useRef<Html5Qrcode | null>(null);
 
     useEffect(() => {
         if (mode === "scan") {
-            const scanner = new Html5QrcodeScanner(
-                "reader",
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    supportedScanTypes: [0], // 0 == Html5QrcodeScanType.SCAN_TYPE_CAMERA
-                    showTorchButtonIfSupported: true
-                },
-        /* verbose= */ false
-            );
+            const html5QrCode = new Html5Qrcode("reader");
+            scannerRef.current = html5QrCode;
 
-            scanner.render(
-                async (decodedText) => {
-                    scanner.clear();
-                    setMode("view");
-                    setLoading(true);
+            const qrCodeSuccessCallback = async (decodedText: string) => {
+                // Stop scanning immediately after success
+                await html5QrCode.stop();
+                setMode("view");
 
-                    try {
-                        // Use unified processScan
-                        const res = await processScan(event.id, decodedText);
-                        setScanResult(res);
-                        if (res.success) {
-                            router.refresh();
-                        }
-                    } catch (error) {
-                        setScanResult({ success: false, message: "Erro ao processar QR Code" });
-                    } finally {
-                        setLoading(false);
+                try {
+                    // Extract identifier from URL - get the last segment after the final slash
+                    const code = extractIdentifierFromUrl(decodedText);
+
+                    if (!code) {
+                        setScanResult({ success: false, message: "QR Code inválido. Código não encontrado." });
+                        return;
                     }
-                },
-                (error) => {
-                    // console.warn(error);
+
+                    // Use unified processScan
+                    const res = await processScan(event.id, code);
+                    setScanResult(res);
+                    if (res.success) {
+                        router.refresh();
+                    }
+                } catch {
+                    setScanResult({ success: false, message: "Erro ao processar QR Code. Tente novamente." });
                 }
-            );
+            };
+
+            // Start camera with back camera (environment) as default
+            html5QrCode.start(
+                { facingMode: "environment" }, // Use back camera
+                {
+                    fps: 15,
+                    qrbox: { width: 250, height: 250 },
+                },
+                qrCodeSuccessCallback,
+                () => {
+                    // Error callback - ignore scan errors (no QR found)
+                }
+            ).catch((err) => {
+                console.error("Camera start error:", err);
+            });
 
             return () => {
-                scanner.clear().catch(console.error);
+                if (scannerRef.current) {
+                    scannerRef.current.stop().catch(() => {
+                        // Ignore stop errors during cleanup
+                    });
+                }
             };
         }
     }, [mode, event.id, router]);
@@ -102,7 +140,7 @@ export function QRCodeView({ user, event }: Props) {
                     </div>
                     <div id="reader" className="rounded-3xl overflow-hidden border-2 border-primary/50 shadow-2xl" />
                     <p className="text-center text-sm text-muted-foreground">
-                        Aponte sua câmera para uma Missão ou QR Code de Usuário
+                        Clique acima e aponte sua câmera para o QR Code.
                     </p>
                 </div>
             ) : (
