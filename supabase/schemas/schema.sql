@@ -187,7 +187,7 @@ begin
   if v_mission_points is not null then
     -- Check if already scanned
     if exists (select 1 from public.scans where user_id = v_user_id and qrcode_identifier = v_code_uuid) then
-      return json_build_object('success', false, 'message', 'Atividade já completada!');
+      return json_build_object('success', false, 'message', 'Missão já completada!');
     end if;
 
     -- Insert Scan
@@ -200,7 +200,7 @@ begin
     on conflict (user_id, event_id)
     do update set points = public.user_event_points.points + v_mission_points;
 
-    return json_build_object('success', true, 'message', 'Atividade completada: ' || v_name, 'points', v_mission_points);
+    return json_build_object('success', true, 'message', 'Missão completada: ' || v_name, 'points', v_mission_points);
   end if;
 
   -- 3. Try User Connection

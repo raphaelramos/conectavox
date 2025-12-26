@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { processScan } from "@/app/actions";
 import { Camera, X, User } from "lucide-react";
@@ -54,9 +54,23 @@ export function QRCodeView({ user, event }: Props) {
     const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
 
+    // Trigger confetti on successful scan
+    useEffect(() => {
+        if (scanResult?.success) {
+            import("canvas-confetti").then((confetti) => {
+                confetti.default({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    zIndex: 9999, // Ensure it's above the modal
+                });
+            });
+        }
+    }, [scanResult]);
+
     const handleScan = async (detectedCodes: { rawValue: string }[]) => {
         if (isProcessing || detectedCodes.length === 0) return;
-        
+
         setIsProcessing(true);
         setMode("view");
 
@@ -88,49 +102,87 @@ export function QRCodeView({ user, event }: Props) {
         <div className="max-w-md mx-auto space-y-8">
             {/* Scan Result Modal/Toast */}
             {scanResult && (
-                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm`}>
-                    <div className="bg-card p-6 rounded-3xl shadow-2xl max-w-sm w-full space-y-4 text-center border border-border">
-                        <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${scanResult.success ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"}`}>
-                            {scanResult.success ? <User className="w-8 h-8" /> : <X className="w-8 h-8" />}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-card p-6 rounded-3xl shadow-2xl max-w-sm w-full space-y-6 text-center border border-border animate-in zoom-in-95 duration-300 relative overflow-hidden">
+
+                        {/* Background subtle glow effect */}
+                        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${scanResult.success ? "from-green-400 via-green-500 to-green-400" : "from-red-400 via-red-500 to-red-400"}`} />
+
+                        <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center ${scanResult.success
+                            ? "bg-green-500/10 text-green-600 dark:text-green-400 ring-4 ring-green-500/20"
+                            : "bg-red-500/10 text-red-600 dark:text-red-400 ring-4 ring-red-500/20"
+                            }`}>
+                            {scanResult.success ? (
+                                <User className="w-10 h-10 animate-bounce" />
+                            ) : (
+                                <X className="w-10 h-10" />
+                            )}
                         </div>
-                        <h3 className="text-xl font-bold">{scanResult.success ? "Sucesso!" : "Ops!"}</h3>
-                        <p className="text-muted-foreground">{scanResult.message}</p>
+
+                        <div className="space-y-2">
+                            <h3 className="text-2xl font-bold tracking-tight">
+                                {scanResult.success ? "Sucesso!" : "Algo deu errado"}
+                            </h3>
+                            <p className="text-muted-foreground leading-relaxed">
+                                {scanResult.message}
+                            </p>
+                        </div>
+
                         {scanResult.points && (
-                            <div className="text-2xl font-bold text-primary">+{scanResult.points} pts</div>
+                            <div className="py-3 px-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
+                                <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400 uppercase tracking-wider mb-1">
+                                    Pontos Ganhos
+                                </p>
+                                <div className="text-4xl font-black text-yellow-500 animate-pulse">
+                                    +{scanResult.points}
+                                </div>
+                            </div>
                         )}
+
                         <button
-                            onClick={() => setScanResult(null)}
-                            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold"
+                            onClick={() => {
+                                setScanResult(null);
+                                if (!scanResult.success) {
+                                    setMode("scan");
+                                }
+                            }}
+                            className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform active:scale-[0.98] ${scanResult.success
+                                    ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30"
+                                    : "bg-secondary hover:bg-secondary/80 text-foreground"
+                                }`}
                         >
-                            Fechar
+                            {scanResult.success ? "Continuar" : "Tentar Novamente"}
                         </button>
                     </div>
                 </div>
             )}
 
             {mode === "scan" ? (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold">Escanear QR Code</h2>
                         <button
                             onClick={() => setMode("view")}
-                            className="p-2 rounded-full bg-muted hover:bg-muted/80"
+                            className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
                         >
                             <X className="w-6 h-6" />
                         </button>
                     </div>
-                    <div className="rounded-3xl overflow-hidden border-2 border-primary/50 shadow-2xl">
+                    <div className="rounded-3xl overflow-hidden border-2 border-primary/50 shadow-2xl aspect-square relative z-0">
                         <Scanner
                             onScan={handleScan}
                             onError={(error) => console.error("Scanner error:", error)}
                             constraints={{ facingMode: "environment" }}
                             formats={["qr_code"]}
                             components={{ finder: true }}
-                            styles={{ container: { borderRadius: "1.5rem" } }}
+                            styles={{
+                                container: { width: "100%", height: "100%" },
+                                video: { width: "100%", height: "100%", objectFit: "cover" }
+                            }}
                         />
                     </div>
-                    <p className="text-center text-sm text-muted-foreground">
-                        Aponte sua câmera para o QR Code.
+                    <p className="text-center text-sm text-muted-foreground animate-pulse">
+                        Procurando QR Code...
                     </p>
                 </div>
             ) : (
@@ -140,9 +192,9 @@ export function QRCodeView({ user, event }: Props) {
                     {/* Scan Button */}
                     <button
                         onClick={() => setMode("scan")}
-                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
                     >
-                        <Camera className="w-6 h-6" />
+                        <Camera className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                         Escanear QR Code
                     </button>
                 </>
