@@ -5,12 +5,19 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get("code");
+    const token = searchParams.get("token");
+    const type = searchParams.get("type");
     // if "next" is in param, use it as the redirect URL
     let next = searchParams.get("next") ?? "/";
     
     // Ensure next is a relative URL
     if (!next.startsWith("/")) {
         next = "/";
+    }
+
+    // Handle password recovery tokens
+    if (token && type === "recovery") {
+        return NextResponse.redirect(`${origin}/auth/update-password?token=${token}`);
     }
 
     if (code) {

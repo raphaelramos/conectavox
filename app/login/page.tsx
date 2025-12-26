@@ -192,6 +192,13 @@ export default function LoginPage() {
                                 className="w-full px-4 py-3 rounded-xl bg-background/50 border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                 placeholder="••••••••"
                             />
+                            <button
+                                type="button"
+                                onClick={() => router.push('/auth/forgot-password')}
+                                className="text-xs text-primary hover:text-primary/80 transition-colors"
+                            >
+                                Esqueci a senha
+                            </button>
                         </div>
 
                         {error && (
