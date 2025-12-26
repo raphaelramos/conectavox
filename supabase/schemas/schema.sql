@@ -21,11 +21,11 @@ create policy "Public profiles are viewable by everyone."
 
 create policy "Users can insert their own profile."
   on profiles for insert
-  with check ( auth.uid() = id );
+  with check ( (select auth.uid()) = id );
 
 create policy "Users can update own profile."
   on profiles for update
-  using ( auth.uid() = id );
+  using ( (select auth.uid()) = id );
 
 -- EVENTS
 create table public.events (
@@ -57,15 +57,15 @@ alter table public.user_roles enable row level security;
 
 create policy "Users can view their own roles."
   on user_roles for select
-  using ( auth.uid() = user_id );
+  using ( (select auth.uid()) = user_id );
 
 create policy "Admins can insert events"
   on events for insert
-  with check ( exists ( select 1 from user_roles where user_id = auth.uid() and role = 'admin' ) );
+  with check ( exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' ) );
 
 create policy "Admins can update events"
   on events for update
-  using ( exists ( select 1 from user_roles where user_id = auth.uid() and role = 'admin' ) );
+  using ( exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' ) );
 
 -- USER EVENT POINTS
 create table public.user_event_points (
@@ -102,7 +102,7 @@ create policy "Activities are viewable by everyone."
 
 create policy "Admins can manage activities"
   on activities for all
-  using ( exists ( select 1 from user_roles where user_id = auth.uid() and role = 'admin' ) );
+  using ( exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' ) );
 
 -- INDEXES
 create index if not exists idx_activities_event_id on public.activities(event_id);
@@ -122,7 +122,7 @@ alter table public.connections enable row level security;
 
 create policy "Users can view their own connections."
   on connections for select
-  using ( auth.uid() = user_id );
+  using ( (select auth.uid()) = user_id );
 
 -- SCANS (Log)
 create table public.scans (
@@ -139,7 +139,7 @@ alter table public.scans enable row level security;
 
 create policy "Users can view their own scans."
   on scans for select
-  using ( auth.uid() = user_id );
+  using ( (select auth.uid()) = user_id );
 
 
 -- FUNCTIONS FOR SCORING
@@ -150,6 +150,7 @@ create or replace function process_scan(
 returns json
 language plpgsql
 security definer
+set search_path = ''
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -180,46 +181,46 @@ begin
 
   -- 1. Try Activity (Mission or Hidden Point)
   select points, type, name into v_mission_points, v_type, v_name
-  from activities
+  from public.activities
   where identifier = v_code_uuid and event_id = p_event_id;
 
   if v_mission_points is not null then
     -- Check if already scanned
-    if exists (select 1 from scans where user_id = v_user_id and qrcode_identifier = v_code_uuid) then
+    if exists (select 1 from public.scans where user_id = v_user_id and qrcode_identifier = v_code_uuid) then
       return json_build_object('success', false, 'message', 'Atividade já completada!');
     end if;
 
     -- Insert Scan
-    insert into scans (user_id, event_id, qrcode_identifier, type)
+    insert into public.scans (user_id, event_id, qrcode_identifier, type)
     values (v_user_id, p_event_id, v_code_uuid, v_type);
 
     -- Add Points
-    insert into user_event_points (user_id, event_id, points)
+    insert into public.user_event_points (user_id, event_id, points)
     values (v_user_id, p_event_id, v_mission_points)
     on conflict (user_id, event_id)
-    do update set points = user_event_points.points + v_mission_points;
+    do update set points = public.user_event_points.points + v_mission_points;
 
     return json_build_object('success', true, 'message', 'Atividade completada: ' || v_name, 'points', v_mission_points);
   end if;
 
   -- 3. Try User Connection
-  if exists (select 1 from profiles where id = v_code_uuid) then
+  if exists (select 1 from public.profiles where id = v_code_uuid) then
     v_target_user_id := v_code_uuid;
 
     -- Check if connection already exists
-    if exists (select 1 from connections where user_id = v_user_id and connected_user_id = v_target_user_id and event_id = p_event_id) then
+    if exists (select 1 from public.connections where user_id = v_user_id and connected_user_id = v_target_user_id and event_id = p_event_id) then
       return json_build_object('success', false, 'message', 'Vocês já estão conectados!');
     end if;
 
     -- Create Connection
-    insert into connections (user_id, connected_user_id, event_id)
+    insert into public.connections (user_id, connected_user_id, event_id)
     values (v_user_id, v_target_user_id, p_event_id);
 
     -- Add Points (1 point for connection)
-    insert into user_event_points (user_id, event_id, points)
+    insert into public.user_event_points (user_id, event_id, points)
     values (v_user_id, p_event_id, 1)
     on conflict (user_id, event_id)
-    do update set points = user_event_points.points + 1;
+    do update set points = public.user_event_points.points + 1;
 
     return json_build_object('success', true, 'message', 'Nova conexão realizada!', 'points', 1);
   end if;
@@ -265,7 +266,7 @@ create policy "Users can upload their own avatar."
   on storage.objects for insert
   with check (
     bucket_id = 'avatars' and
-    auth.uid() = (storage.foldername(name))[1]::uuid
+    (select auth.uid()) = (storage.foldername(name))[1]::uuid
   );
 
 -- Avatars: Authenticated Update (User folder)
@@ -273,7 +274,7 @@ create policy "Users can update their own avatar."
   on storage.objects for update
   using (
     bucket_id = 'avatars' and
-    auth.uid() = (storage.foldername(name))[1]::uuid
+    (select auth.uid()) = (storage.foldername(name))[1]::uuid
   );
 
 -- Avatars: Authenticated Delete (User folder)
@@ -281,7 +282,7 @@ create policy "Users can delete their own avatar."
   on storage.objects for delete
   using (
     bucket_id = 'avatars' and
-    auth.uid() = (storage.foldername(name))[1]::uuid
+    (select auth.uid()) = (storage.foldername(name))[1]::uuid
   );
 
 -- Images: Public Read
@@ -294,7 +295,7 @@ create policy "Admins can upload images."
   on storage.objects for insert
   with check (
     bucket_id = 'images' and
-    exists ( select 1 from user_roles where user_id = auth.uid() and role = 'admin' )
+    exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' )
   );
 
 -- Images: Admin Update
@@ -302,7 +303,7 @@ create policy "Admins can update images."
   on storage.objects for update
   using (
     bucket_id = 'images' and
-    exists ( select 1 from user_roles where user_id = auth.uid() and role = 'admin' )
+    exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' )
   );
 
 -- Images: Admin Delete
@@ -310,7 +311,7 @@ create policy "Admins can delete images."
   on storage.objects for delete
   using (
     bucket_id = 'images' and
-    exists ( select 1 from user_roles where user_id = auth.uid() and role = 'admin' )
+    exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' )
   );
 
 -- INDEXES

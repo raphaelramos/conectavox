@@ -1,5 +1,5 @@
-create extension if not exists "pg_net";
-create extension if not exists "supabase_vault";
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
+CREATE EXTENSION IF NOT EXISTS "supabase_vault";
 
 -- Create a function to handle processing OAuth user avatars by calling the edge function
 create or replace function public.handle_oauth_avatar()
