@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { updateProfile, updateAvatar } from "@/app/actions";
 import { Loader2, Edit2, Save, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { uploadImage, getPublicImageUrl, deleteSupabaseFile } from "@/utils/supabase-image";
+import { uploadImage, deleteSupabaseFile } from "@/utils/supabase-image";
 import { AVATARS_BUCKET } from "@/utils/constants";
 import { getURL } from "@/lib/utils";
 import { buildQRCodeUrl } from "@/lib/qrcode";
@@ -71,17 +71,13 @@ export function ProfileCard({ user, eventId }: Props) {
         setLoading(false);
     };
 
-    const displayAvatarUrl = avatarUrl
-        ? getPublicImageUrl(avatarUrl, AVATARS_BUCKET)
-        : null;
-
     return (
         <div className="bg-card border border-border/50 rounded-3xl p-6 space-y-6 shadow-xl">
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
                     <div className="relative group">
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden relative">
-                            {displayAvatarUrl ? (
+                            {avatarUrl ? (
                                 <Image
                                     src={`${AVATARS_BUCKET}/${avatarUrl}`}
                                     alt="Avatar"

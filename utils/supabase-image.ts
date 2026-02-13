@@ -34,9 +34,11 @@ export const uploadImage = async (file: File, bucket: string = IMAGES_BUCKET, fo
 };
 
 export const getPublicImageUrl = (imageUrl: string, bucket: string = IMAGES_BUCKET) => {
-    const supabase = createClient();
-    const { data } = supabase.storage.from(bucket).getPublicUrl(imageUrl);
-    return data?.publicUrl ?? null;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return null;
+    
+    const normalizedPath = imageUrl.replace(/^\/+/, '');
+    return `${supabaseUrl}/storage/v1/object/public/${bucket}/${normalizedPath}`;
 };
 
 export const deleteSupabaseFile = async (path: string, bucket: string = IMAGES_BUCKET) => {
