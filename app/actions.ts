@@ -54,7 +54,12 @@ function decodeQRCodeToken(token: string): DecodedQRPayload | null {
     if (!encodedPayload) return null;
 
     try {
-        const jsonPayload = Buffer.from(encodedPayload, "base64url").toString("utf8");
+        const normalizedBase64 = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
+        const paddedBase64 = normalizedBase64.padEnd(
+            normalizedBase64.length + ((4 - (normalizedBase64.length % 4)) % 4),
+            "="
+        );
+        const jsonPayload = Buffer.from(paddedBase64, "base64").toString("utf8");
         const payload = JSON.parse(jsonPayload) as Partial<DecodedQRPayload>;
 
         if (payload.v !== 1) return null;

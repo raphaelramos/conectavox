@@ -12,16 +12,9 @@ interface QRCodeTokenPayload {
 }
 
 function encodeBase64Url(value: string) {
-    if (typeof Buffer !== "undefined") {
-        return Buffer.from(value, "utf8").toString("base64url");
-    }
-
-    const encoded = encodeURIComponent(value).replace(
-        /%([0-9A-F]{2})/g,
-        (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16))
-    );
-
-    return btoa(encoded).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    const utf8 = new TextEncoder().encode(value);
+    const binary = Array.from(utf8, (byte) => String.fromCharCode(byte)).join("");
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 export function buildQRCodeToken(type: QRCodeTokenType, eventId: string, identifier: string) {
