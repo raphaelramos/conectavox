@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { getURL } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { translateSupabaseError } from "@/utils/supabase-errors";
@@ -18,7 +18,11 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const supabase = createClient();
+    const rawNext = searchParams.get("next");
+    const nextPath = rawNext && rawNext.startsWith("/") ? rawNext : "/";
+    const authCallbackUrl = `${getURL()}auth/callback?next=${encodeURIComponent(nextPath)}`;
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,7 +36,7 @@ export default function LoginPage() {
                     email,
                     password,
                     options: {
-                        emailRedirectTo: `${getURL()}auth/callback`,
+                        emailRedirectTo: authCallbackUrl,
                         data: {
                             full_name: name,
                         },
@@ -42,7 +46,7 @@ export default function LoginPage() {
 
                 if (data.session) {
                     router.refresh();
-                    router.push("/");
+                    router.push(nextPath);
                 } else {
                     setMessage("Cadastro realizado! Verifique seu e-mail para confirmar.");
                 }
@@ -53,7 +57,7 @@ export default function LoginPage() {
                 });
                 if (error) throw error;
                 router.refresh();
-                router.push("/");
+                router.push(nextPath);
             }
         } catch (err: unknown) {
             setError(translateSupabaseError(err));
@@ -99,7 +103,7 @@ export default function LoginPage() {
                                     const { error } = await supabase.auth.signInWithOAuth({
                                         provider: 'google',
                                         options: {
-                                            redirectTo: `${getURL()}auth/callback`,
+                                            redirectTo: authCallbackUrl,
                                         },
                                     });
                                     if (error) throw error;

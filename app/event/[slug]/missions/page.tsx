@@ -1,9 +1,9 @@
-import { getEventBySlug, getActivities } from "@/app/actions";
+import { getEventBySlug, getActivities, getCompletedMissionIdentifiers } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, Target, Scan } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Target, Scan } from "lucide-react";
 import { IMAGES_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
 
 export default async function MissionsPage({
@@ -27,7 +27,11 @@ export default async function MissionsPage({
         return <div>Event not found</div>;
     }
 
-    const missions = await getActivities(event.id, "mission");
+    const [missions, completedMissionIdentifiers] = await Promise.all([
+        getActivities(event.id, "mission"),
+        getCompletedMissionIdentifiers(event.id),
+    ]);
+    const completedMissionSet = new Set(completedMissionIdentifiers);
 
     return (
         <div className="min-h-screen p-4 pb-20 max-w-2xl mx-auto">
@@ -50,11 +54,14 @@ export default async function MissionsPage({
             </header>
 
             <div className="space-y-4">
-                {missions.map((mission) => (
-                    <div
-                        key={mission.id}
-                        className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 transition-all group"
-                    >
+                {missions.map((mission) => {
+                    const isCompleted = completedMissionSet.has(mission.identifier);
+
+                    return (
+                        <div
+                            key={mission.id}
+                            className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 transition-all group"
+                        >
                         <div className="w-full h-48 bg-muted relative">
                             {mission.image_url ? (
                                 <Image
@@ -66,6 +73,14 @@ export default async function MissionsPage({
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-purple-500/10 text-purple-500">
                                     <Target className="w-12 h-12" />
+                                </div>
+                            )}
+                            {isCompleted && (
+                                <div className="absolute top-4 left-4">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white shadow-lg px-2.5 py-1 text-xs font-semibold">
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        Concluída
+                                    </span>
                                 </div>
                             )}
                             <div className="absolute top-4 right-4">
@@ -80,8 +95,9 @@ export default async function MissionsPage({
                                 {mission.description}
                             </p>
                         </div>
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
 
                 {missions.length === 0 && (
                     <div className="text-center py-20 space-y-4">

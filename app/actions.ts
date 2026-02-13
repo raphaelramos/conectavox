@@ -79,7 +79,7 @@ export async function getEvents() {
     const { data, error } = await supabase
         .from("events")
         .select("*")
-        .order("start_date", { ascending: true });
+        .order("start_date", { ascending: false });
 
     if (error) {
         console.error("Error fetching events:", error);
@@ -353,6 +353,26 @@ export async function getActivities(eventId: string, type?: "mission" | "hidden_
 
     if (error) return [];
     return data as Activity[];
+}
+
+export async function getCompletedMissionIdentifiers(eventId: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const { data, error } = await supabase
+        .from("scans")
+        .select("qrcode_identifier")
+        .eq("event_id", eventId)
+        .eq("user_id", user.id)
+        .eq("type", "mission");
+
+    if (error || !data) return [];
+
+    return data.map((scan) => scan.qrcode_identifier);
 }
 
 export async function getActivity(id: string) {
