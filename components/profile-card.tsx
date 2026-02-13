@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import { updateProfile, updateAvatar } from "@/app/actions";
-import { Loader2, Edit2, Save, Upload } from "lucide-react";
+import { Loader2, Save, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { uploadImage, deleteSupabaseFile } from "@/utils/supabase-image";
 import { AVATARS_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
@@ -166,9 +166,9 @@ export function ProfileCard({ user, eventId }: Props) {
                 {!isEditing && (
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
+                        className="inline-flex items-center rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                     >
-                        <Edit2 className="w-5 h-5" />
+                        Editar perfil
                     </button>
                 )}
             </div>

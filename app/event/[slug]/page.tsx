@@ -35,7 +35,7 @@ export default async function EventDashboard({
             icon: QrCode,
             href: `/event/${slug}/qrcode`,
             color: "bg-blue-500/10 text-blue-500",
-            description: "Seu ID & Scanner",
+            description: "Seu Perfil & Scanner",
         },
         {
             title: "Missões",
@@ -58,6 +58,12 @@ export default async function EventDashboard({
             color: "bg-yellow-500/10 text-yellow-500",
             description: "Classificação",
         },
+    ];
+    const participationSteps = [
+        "Escaneie QR Codes para ganhar pontos",
+        "Conecte-se com outros participantes",
+        "Complete missões durante o evento",
+        "Encontre QRCodes escondidos para bônus",
     ];
 
     return (
@@ -130,16 +136,23 @@ export default async function EventDashboard({
 
                 {/* Instructions */}
                 <div className="p-6 rounded-2xl bg-secondary/50 border border-border/50 space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary" />
+                    <h3 className="font-semibold flex items-center gap-2 text-foreground">
+                        <Target className="w-4 h-4 text-primary" />
                         Como Participar
                     </h3>
-                    <ul className="text-sm text-muted-foreground space-y-2 pl-4 list-disc">
-                        <li>Escaneie QR codes para ganhar pontos:</li>
-                        <li>Conecte-se com outros participantes</li>
-                        <li>Completando missões</li>
-                        <li>Encontrando QRCodes escondidos</li>
-                    </ul>
+                    <div className="space-y-2">
+                        {participationSteps.map((step, index) => (
+                            <div
+                                key={step}
+                                className="flex items-start gap-3 rounded-xl bg-background/70 border border-border/50 px-3 py-2.5"
+                            >
+                                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
+                                    {index + 1}
+                                </span>
+                                <p className="text-sm text-muted-foreground">{step}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
