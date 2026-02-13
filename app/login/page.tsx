@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { getURL } from "@/lib/utils";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { translateSupabaseError } from "@/utils/supabase-errors";
@@ -18,11 +18,19 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const router = useRouter();
-    const searchParams = useSearchParams();
     const supabase = createClient();
-    const rawNext = searchParams.get("next");
-    const nextPath = rawNext && rawNext.startsWith("/") ? rawNext : "/";
-    const authCallbackUrl = `${getURL()}auth/callback?next=${encodeURIComponent(nextPath)}`;
+
+    const getNextPath = () => {
+        if (typeof window === "undefined") return "/";
+        const rawNext = new URLSearchParams(window.location.search).get("next");
+        if (!rawNext || !rawNext.startsWith("/")) return "/";
+        return rawNext;
+    };
+
+    const getAuthCallbackUrl = () => {
+        const nextPath = getNextPath();
+        return `${getURL()}auth/callback?next=${encodeURIComponent(nextPath)}`;
+    };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,6 +39,9 @@ export default function LoginPage() {
         setMessage(null);
 
         try {
+            const nextPath = getNextPath();
+            const authCallbackUrl = getAuthCallbackUrl();
+
             if (view === "signup") {
                 const { data, error } = await supabase.auth.signUp({
                     email,
@@ -100,6 +111,7 @@ export default function LoginPage() {
                             onClick={async () => {
                                 setLoading(true);
                                 try {
+                                    const authCallbackUrl = getAuthCallbackUrl();
                                     const { error } = await supabase.auth.signInWithOAuth({
                                         provider: 'google',
                                         options: {
