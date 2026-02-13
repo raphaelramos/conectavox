@@ -2,8 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    loader: "custom",
-    loaderFile: "./supabase-image-loader.ts",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+    unoptimized: process.env.NODE_ENV === "production",
   },
 };
 

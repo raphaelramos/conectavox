@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { User, Instagram } from "lucide-react";
-import { AVATARS_BUCKET } from "@/utils/constants";
+import { AVATARS_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
 import { Database } from "@/types/database.types";
 
 type Connection = Database["public"]["Tables"]["connections"]["Row"] & {
@@ -29,7 +29,7 @@ export function ConnectionCard({ connection }: ConnectionCardProps) {
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden relative shrink-0">
                     {connection.connected_user?.avatar_url ? (
                         <Image
-                            src={`${AVATARS_BUCKET}/${connection.connected_user.avatar_url}`}
+                            src={getSupabaseImageUrl(connection.connected_user.avatar_url, AVATARS_BUCKET) || ""}
                             alt={connection.connected_user.full_name || "Avatar"}
                             fill
                             className="object-cover"

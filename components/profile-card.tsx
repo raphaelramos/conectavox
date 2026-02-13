@@ -7,7 +7,7 @@ import { updateProfile, updateAvatar } from "@/app/actions";
 import { Loader2, Edit2, Save, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { uploadImage, deleteSupabaseFile } from "@/utils/supabase-image";
-import { AVATARS_BUCKET } from "@/utils/constants";
+import { AVATARS_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
 import { getURL } from "@/lib/utils";
 import { buildQRCodeUrl } from "@/lib/qrcode";
 
@@ -79,7 +79,7 @@ export function ProfileCard({ user, eventId }: Props) {
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden relative">
                             {avatarUrl ? (
                                 <Image
-                                    src={`${AVATARS_BUCKET}/${avatarUrl}`}
+                                    src={getSupabaseImageUrl(avatarUrl, AVATARS_BUCKET) || ""}
                                     alt="Avatar"
                                     fill
                                     className="object-cover"

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createEvent, updateEvent } from "@/app/actions";
 import { uploadImage, deleteSupabaseFile } from "@/utils/supabase-image";
-import { IMAGES_BUCKET } from "@/utils/constants";
+import { IMAGES_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
 import { Loader2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -169,7 +169,7 @@ export function EventForm({ initialData, onSuccess, redirectUrl }: Props) {
             {imageUrl && (
                 <div className="w-full h-32 bg-muted rounded-xl overflow-hidden relative">
                     <Image
-                        src={`${IMAGES_BUCKET}/${imageUrl}`}
+                        src={getSupabaseImageUrl(imageUrl, IMAGES_BUCKET) || ""}
                         alt="Preview"
                         fill
                         className="object-cover"

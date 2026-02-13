@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, Target, Scan } from "lucide-react";
-import { IMAGES_BUCKET } from "@/utils/constants";
+import { IMAGES_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
 
 export default async function MissionsPage({
     params,
@@ -58,7 +58,7 @@ export default async function MissionsPage({
                         <div className="w-full h-48 bg-muted relative">
                             {mission.image_url ? (
                                 <Image
-                                    src={`${IMAGES_BUCKET}/${mission.image_url}`}
+                                    src={getSupabaseImageUrl(mission.image_url, IMAGES_BUCKET) || ""}
                                     alt={mission.name}
                                     fill
                                     className="object-cover"
