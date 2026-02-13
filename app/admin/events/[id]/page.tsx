@@ -100,6 +100,7 @@ export default async function EventAdminPage({
                                         name={mission.name}
                                         identifier={mission.identifier}
                                         points={mission.points}
+                                        eventId={id}
                                     />
                                     <Link
                                         href={`/admin/events/${id}/activities/${mission.id}`}
@@ -149,6 +150,7 @@ export default async function EventAdminPage({
                                         name={point.name}
                                         identifier={point.identifier}
                                         points={point.points}
+                                        eventId={id}
                                     />
                                     <Link
                                         href={`/admin/events/${id}/activities/${point.id}`}

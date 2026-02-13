@@ -1,11 +1,27 @@
 import { createClient } from "@/lib/supabase/client";
 import { IMAGES_BUCKET, MAX_IMAGE_WIDTH } from "./constants";
 
+const mimeTypeExtensionMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg",
+    "image/avif": "avif",
+};
+
+const getFileExtension = (file: File) => {
+    const fileNameExtension = file.name.split(".").pop()?.toLowerCase();
+    if (fileNameExtension) return fileNameExtension;
+    return mimeTypeExtensionMap[file.type] ?? "bin";
+};
+
 export const uploadImage = async (file: File, bucket: string = IMAGES_BUCKET, folder?: string) => {
     const resizedFile = await resizeImage(file);
     const supabase = createClient();
-    const fileExt = resizedFile.name.split(".").pop();
-    const fileName = `${Math.random()}.${fileExt}`;
+    const fileExt = getFileExtension(resizedFile);
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = folder ? `${folder}/${fileName}` : `${fileName}`;
 
     const { error } = await supabase.storage.from(bucket).upload(filePath, resizedFile);

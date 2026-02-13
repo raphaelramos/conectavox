@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { Database } from "@/types/database.types";
+import { QR_CODE_TOKEN_PREFIX, UUID_REGEX } from "@/lib/qrcode";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 type Connection = Database["public"]["Tables"]["connections"]["Row"] & {
@@ -15,6 +16,57 @@ type RankingEntry = {
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
 type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
 type ActivityUpdate = Database["public"]["Tables"]["activities"]["Update"];
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+type ScanResponse = { success: boolean; message: string; points?: number; name?: string };
+type QRTokenType = "activity" | "user";
+type DecodedQRPayload = {
+    v: 1;
+    t: QRTokenType;
+    e: string;
+    i: string;
+};
+const NOT_APP_QR_MESSAGE = "Este QRCode não pertence a esse app";
+
+function extractCodeToken(value: string) {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return "";
+
+    if (!trimmedValue.includes("/")) return trimmedValue;
+
+    try {
+        const url = new URL(trimmedValue);
+        const pathSegments = url.pathname.split("/").filter(Boolean);
+        const codeIndex = pathSegments.lastIndexOf("code");
+        if (codeIndex >= 0 && pathSegments[codeIndex + 1]) {
+            return pathSegments[codeIndex + 1];
+        }
+        return pathSegments[pathSegments.length - 1] ?? "";
+    } catch {
+        const pathSegments = trimmedValue.split("/").filter(Boolean);
+        return pathSegments[pathSegments.length - 1] ?? "";
+    }
+}
+
+function decodeQRCodeToken(token: string): DecodedQRPayload | null {
+    if (!token.startsWith(QR_CODE_TOKEN_PREFIX)) return null;
+
+    const encodedPayload = token.slice(QR_CODE_TOKEN_PREFIX.length);
+    if (!encodedPayload) return null;
+
+    try {
+        const jsonPayload = Buffer.from(encodedPayload, "base64url").toString("utf8");
+        const payload = JSON.parse(jsonPayload) as Partial<DecodedQRPayload>;
+
+        if (payload.v !== 1) return null;
+        if (payload.t !== "activity" && payload.t !== "user") return null;
+        if (typeof payload.e !== "string" || !UUID_REGEX.test(payload.e)) return null;
+        if (typeof payload.i !== "string" || !UUID_REGEX.test(payload.i)) return null;
+
+        return payload as DecodedQRPayload;
+    } catch {
+        return null;
+    }
+}
 
 
 export async function getEvents() {
@@ -122,7 +174,7 @@ export async function processScan(eventId: string, codeIdentifier: string) {
         return { success: false, message: error.message };
     }
 
-    return data as { success: boolean; message: string; points?: number; name?: string };
+    return data as ScanResponse;
 }
 
 export async function getProfile() {
@@ -365,76 +417,160 @@ export async function deleteActivity(
     return { success: true };
 }
 
-export async function processCodeScan(code: string) {
-    const supabase = await createClient();
+async function getActiveEventId(supabase: SupabaseServerClient) {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+        .from("events")
+        .select("id")
+        .lte("start_date", now)
+        .gte("end_date", now)
+        .order("start_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!code || code.trim() === "") {
-        return { success: false, message: "Código não informado." };
+    if (error) return { eventId: null, error: "Erro ao buscar eventos ativos. Tente novamente." };
+    if (!data) return { eventId: null, error: "Nenhum evento ativo no momento para realizar conexão." };
+    return { eventId: data.id, error: null };
+}
+
+async function resolveLegacyActivityEvent(
+    supabase: SupabaseServerClient,
+    code: string,
+    contextEventId: string | null
+) {
+    if (contextEventId) {
+        const { data: scopedActivity, error: scopedActivityError } = await supabase
+            .from("activities")
+            .select("event_id")
+            .eq("identifier", code)
+            .eq("event_id", contextEventId)
+            .maybeSingle();
+
+        if (scopedActivityError) {
+            return { eventId: null, error: "Erro ao verificar atividade. Tente novamente.", belongsOtherEvent: false };
+        }
+
+        if (scopedActivity) {
+            return { eventId: scopedActivity.event_id, error: null, belongsOtherEvent: false };
+        }
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(code)) {
-        return { success: false, message: "Formato de código inválido." };
-    }
-
-    // Check if user is authenticated
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser) {
-        return { success: false, message: "Você precisa estar logado para escanear códigos." };
-    }
-
-    // 1. Check if it's an Activity (Mission/Hidden Point)
     const { data: activity, error: activityError } = await supabase
         .from("activities")
         .select("event_id")
         .eq("identifier", code)
-        .single();
+        .maybeSingle();
 
-    if (activityError && activityError.code !== "PGRST116") {
-        return { success: false, message: "Erro ao verificar atividade. Tente novamente." };
+    if (activityError) {
+        return { eventId: null, error: "Erro ao verificar atividade. Tente novamente.", belongsOtherEvent: false };
     }
 
     if (activity) {
-        return processScan(activity.event_id, code);
+        return {
+            eventId: activity.event_id,
+            error: null,
+            belongsOtherEvent: contextEventId ? activity.event_id !== contextEventId : false,
+        };
     }
 
-    // 2. Check if it's a User (Connection)
-    const { data: userProfile, error: userError } = await supabase
+    return { eventId: null, error: null, belongsOtherEvent: false };
+}
+
+async function resolveLegacyUser(supabase: SupabaseServerClient, code: string) {
+    const { data: profileByQrIdentifier, error: profileByQrIdentifierError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("qr_identifier", code)
+        .maybeSingle();
+
+    if (profileByQrIdentifierError) {
+        return { found: false, error: "Erro ao verificar usuário. Tente novamente." };
+    }
+
+    if (profileByQrIdentifier) {
+        return { found: true, error: null };
+    }
+
+    const { data: profileById, error: profileByIdError } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", code)
-        .single();
+        .maybeSingle();
 
-    if (userError && userError.code !== "PGRST116") {
-        return { success: false, message: "Erro ao verificar usuário. Tente novamente." };
+    if (profileByIdError) {
+        return { found: false, error: "Erro ao verificar usuário. Tente novamente." };
     }
 
-    if (userProfile) {
-        // Check if user is trying to scan their own code
-        if (userProfile.id === currentUser.id) {
-            return { success: false, message: "Você não pode escanear seu próprio QR Code." };
-        }
+    return { found: !!profileById, error: null };
+}
 
-        const now = new Date().toISOString();
-        const { data: events, error: eventsError } = await supabase
-            .from("events")
-            .select("id")
-            .lte("start_date", now)
-            .gte("end_date", now)
-            .limit(1);
-
-        if (eventsError) {
-            return { success: false, message: "Erro ao buscar eventos ativos. Tente novamente." };
-        }
-
-        if (!events || events.length === 0) {
-            return { success: false, message: "Nenhum evento ativo no momento para realizar conexão." };
-        }
-
-        const eventId = events[0].id;
-        return processScan(eventId, code);
+export async function processQRCodeScan(rawCode: string, contextEventId: string = "") {
+    if (!rawCode || rawCode.trim() === "") {
+        return { success: false, message: "Código não informado." } as ScanResponse;
     }
 
-    return { success: false, message: "Código não encontrado. Verifique se o QR Code é válido." };
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { success: false, message: "Você precisa estar logado para escanear códigos." } as ScanResponse;
+    }
+
+    const codeToken = extractCodeToken(rawCode);
+    if (!codeToken) {
+        return { success: false, message: NOT_APP_QR_MESSAGE } as ScanResponse;
+    }
+
+    const decodedPayload = decodeQRCodeToken(codeToken);
+    if (decodedPayload) {
+        if (contextEventId && contextEventId !== decodedPayload.e) {
+            return { success: false, message: "Esse QR Code pertence a outro evento." } as ScanResponse;
+        }
+
+        return processScan(decodedPayload.e, decodedPayload.i);
+    }
+
+    if (codeToken.startsWith(QR_CODE_TOKEN_PREFIX)) {
+        return { success: false, message: NOT_APP_QR_MESSAGE } as ScanResponse;
+    }
+
+    if (!UUID_REGEX.test(codeToken)) {
+        return { success: false, message: NOT_APP_QR_MESSAGE } as ScanResponse;
+    }
+
+    const legacyUser = await resolveLegacyUser(supabase, codeToken);
+    if (legacyUser.error) {
+        return { success: false, message: legacyUser.error } as ScanResponse;
+    }
+
+    if (!legacyUser.found) {
+        const legacyActivity = await resolveLegacyActivityEvent(supabase, codeToken, contextEventId || null);
+        if (legacyActivity.error) {
+            return { success: false, message: legacyActivity.error } as ScanResponse;
+        }
+
+        if (legacyActivity.belongsOtherEvent) {
+            return { success: false, message: "Esse QR Code pertence a outro evento." } as ScanResponse;
+        }
+
+        if (!legacyActivity.eventId) {
+            return { success: false, message: NOT_APP_QR_MESSAGE } as ScanResponse;
+        }
+
+        return processScan(legacyActivity.eventId, codeToken);
+    }
+
+    if (contextEventId) {
+        return processScan(contextEventId, codeToken);
+    }
+
+    const activeEvent = await getActiveEventId(supabase);
+    if (activeEvent.error || !activeEvent.eventId) {
+        return { success: false, message: activeEvent.error ?? "Nenhum evento ativo no momento para realizar conexão." } as ScanResponse;
+    }
+
+    return processScan(activeEvent.eventId, codeToken);
+}
+
+export async function processCodeScan(code: string) {
+    return processQRCodeScan(code);
 }

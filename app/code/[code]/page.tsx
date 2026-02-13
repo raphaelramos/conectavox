@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { processCodeScan } from "@/app/actions";
+import { processQRCodeScan } from "@/app/actions";
 import { Loader2, CheckCircle, XCircle, Home } from "lucide-react";
 import Link from "next/link";
 
@@ -31,11 +31,8 @@ export default function CodePage() {
                 return;
             }
 
-            // Extract identifier from URL if full URL was passed
-            const identifier = extractIdentifier(code);
-
             try {
-                const response = await processCodeScan(identifier);
+                const response = await processQRCodeScan(code);
                 setResult(response);
                 setState(response.success ? "success" : "error");
             } catch {
@@ -46,15 +43,6 @@ export default function CodePage() {
 
         processCode();
     }, [code]);
-
-    const extractIdentifier = (value: string): string => {
-        // If it's a full URL, extract the last segment
-        if (value.includes("/")) {
-            const segments = value.split("/").filter(Boolean);
-            return segments[segments.length - 1];
-        }
-        return value;
-    };
 
     const handleGoToEvents = () => {
         router.push("/");

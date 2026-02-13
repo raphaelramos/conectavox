@@ -1,8 +1,6 @@
-import { getEvents, deleteEvent, isAdmin } from "@/app/actions";
-import { createClient } from "@/lib/supabase/server";
+import { getEvents, isAdmin } from "@/app/actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Calendar, ChevronRight, Settings, Trash2 } from "lucide-react";
 import { CreateEventSection } from "@/components/admin/create-event-section";
 import { EventCard } from "@/components/admin/event-card";
 

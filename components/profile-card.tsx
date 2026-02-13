@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { uploadImage, getPublicImageUrl, deleteSupabaseFile } from "@/utils/supabase-image";
 import { AVATARS_BUCKET } from "@/utils/constants";
 import { getURL } from "@/lib/utils";
+import { buildQRCodeUrl } from "@/lib/qrcode";
 
 import { Database } from "@/types/database.types";
 
@@ -16,9 +17,10 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface Props {
     user: Profile;
+    eventId: string;
 }
 
-export function ProfileCard({ user }: Props) {
+export function ProfileCard({ user, eventId }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(user.full_name || "");
     const [instagram, setInstagram] = useState(user.instagram || "");
@@ -179,7 +181,7 @@ export function ProfileCard({ user }: Props) {
             <div className="flex flex-col items-center gap-4 py-4">
                 <div className="p-4 bg-white rounded-3xl shadow-lg">
                     <QRCodeSVG
-                        value={`${getURL()}code/${user.id}`}
+                        value={buildQRCodeUrl(getURL(), "user", eventId, user.qr_identifier)}
                         size={200}
                         level="H"
                     />

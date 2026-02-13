@@ -143,6 +143,7 @@ export type Database = {
           full_name: string
           id: string
           instagram: string | null
+          qr_identifier: string
           tiktok: string | null
           updated_at: string | null
         }
@@ -151,6 +152,7 @@ export type Database = {
           full_name: string
           id: string
           instagram?: string | null
+          qr_identifier?: string
           tiktok?: string | null
           updated_at?: string | null
         }
@@ -159,6 +161,7 @@ export type Database = {
           full_name?: string
           id?: string
           instagram?: string | null
+          qr_identifier?: string
           tiktok?: string | null
           updated_at?: string | null
         }

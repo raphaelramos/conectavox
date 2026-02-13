@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { processScan } from "@/app/actions";
+import { processQRCodeScan } from "@/app/actions";
 import { Camera, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ProfileCard } from "./profile-card";
@@ -27,25 +27,6 @@ interface ScanResult {
 interface Props {
     user: Profile;
     event: Event;
-}
-
-/**
- * Extracts the identifier from a QR code value.
- * If the value is a URL, returns the last segment after the final slash.
- * Otherwise, returns the value as-is.
- */
-function extractIdentifierFromUrl(value: string): string {
-    if (!value) {
-        return "";
-    }
-
-    // If it contains a slash, extract the last segment
-    if (value.includes("/")) {
-        const segments = value.split("/").filter(Boolean);
-        return segments[segments.length - 1] || "";
-    }
-
-    return value;
 }
 
 export function QRCodeView({ user, event }: Props) {
@@ -76,17 +57,7 @@ export function QRCodeView({ user, event }: Props) {
 
         try {
             const decodedText = detectedCodes[0].rawValue;
-            // Extract identifier from URL - get the last segment after the final slash
-            const code = extractIdentifierFromUrl(decodedText);
-
-            if (!code) {
-                setScanResult({ success: false, message: "QR Code inválido. Código não encontrado." });
-                setIsProcessing(false);
-                return;
-            }
-
-            // Use unified processScan
-            const res = await processScan(event.id, code);
+            const res = await processQRCodeScan(decodedText, event.id);
             setScanResult(res);
             if (res.success) {
                 router.refresh();
@@ -187,7 +158,7 @@ export function QRCodeView({ user, event }: Props) {
                 </div>
             ) : (
                 <>
-                    <ProfileCard user={user} />
+                    <ProfileCard user={user} eventId={event.id} />
 
                     {/* Scan Button */}
                     <button

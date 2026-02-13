@@ -4,6 +4,7 @@ create extension if not exists "uuid-ossp";
 -- PROFILES
 create table public.profiles (
   id uuid references auth.users on delete cascade not null primary key,
+  qr_identifier uuid default uuid_generate_v4() unique not null,
   full_name text not null,
   avatar_url text,
   instagram text,
@@ -132,7 +133,7 @@ create table public.scans (
   qrcode_identifier uuid not null,
   type text not null, -- 'mission', 'hidden_point', 'connection'
   created_at timestamp with time zone default now(),
-  unique(user_id, qrcode_identifier)
+  unique(user_id, event_id, qrcode_identifier)
 );
 
 alter table public.scans enable row level security;
@@ -155,12 +156,11 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   v_code_uuid uuid;
-  v_mission_points int;
-  v_hidden_points int;
+  v_activity_points int;
   v_target_user_id uuid;
   v_type text;
-  v_points int;
   v_name text;
+  v_scan_inserted_count int;
 begin
   -- Check authentication
   if v_user_id is null then
@@ -174,53 +174,69 @@ begin
     return json_build_object('success', false, 'message', 'Invalid QR Code format');
   end;
 
-  -- Prevent user from scanning their own QR code
-  if v_code_uuid = v_user_id then
-    return json_build_object('success', false, 'message', 'Você não pode escanear seu próprio QR Code!');
-  end if;
-
   -- 1. Try Activity (Mission or Hidden Point)
-  select points, type, name into v_mission_points, v_type, v_name
+  select points, type, name into v_activity_points, v_type, v_name
   from public.activities
   where identifier = v_code_uuid and event_id = p_event_id;
 
-  if v_mission_points is not null then
-    -- Check if already scanned
-    if exists (select 1 from public.scans where user_id = v_user_id and qrcode_identifier = v_code_uuid) then
+  if v_activity_points is not null then
+    insert into public.scans (user_id, event_id, qrcode_identifier, type)
+    values (v_user_id, p_event_id, v_code_uuid, v_type)
+    on conflict (user_id, event_id, qrcode_identifier) do nothing;
+
+    get diagnostics v_scan_inserted_count = row_count;
+    if v_scan_inserted_count = 0 then
       return json_build_object('success', false, 'message', 'Missão já completada!');
     end if;
 
-    -- Insert Scan
-    insert into public.scans (user_id, event_id, qrcode_identifier, type)
-    values (v_user_id, p_event_id, v_code_uuid, v_type);
-
     -- Add Points
     insert into public.user_event_points (user_id, event_id, points)
-    values (v_user_id, p_event_id, v_mission_points)
+    values (v_user_id, p_event_id, v_activity_points)
     on conflict (user_id, event_id)
-    do update set points = public.user_event_points.points + v_mission_points;
+    do update set points = public.user_event_points.points + excluded.points;
 
-    return json_build_object('success', true, 'message', 'Missão completada: ' || v_name, 'points', v_mission_points);
+    return json_build_object('success', true, 'message', 'Missão completada: ' || v_name, 'points', v_activity_points);
   end if;
 
-  -- 3. Try User Connection
-  if exists (select 1 from public.profiles where id = v_code_uuid) then
-    v_target_user_id := v_code_uuid;
+  -- 2. Try User Connection
+  select id into v_target_user_id
+  from public.profiles
+  where qr_identifier = v_code_uuid or id = v_code_uuid
+  limit 1;
 
-    -- Check if connection already exists
-    if exists (select 1 from public.connections where user_id = v_user_id and connected_user_id = v_target_user_id and event_id = p_event_id) then
+  if v_target_user_id is not null then
+    if v_target_user_id = v_user_id then
+      return json_build_object('success', false, 'message', 'Você não pode escanear seu próprio QR Code!');
+    end if;
+
+    perform pg_advisory_xact_lock(hashtext(least(v_user_id::text, v_target_user_id::text) || ':' || greatest(v_user_id::text, v_target_user_id::text) || ':' || p_event_id::text));
+
+    if exists (
+      select 1
+      from public.connections
+      where event_id = p_event_id
+        and (
+          (user_id = v_user_id and connected_user_id = v_target_user_id)
+          or (user_id = v_target_user_id and connected_user_id = v_user_id)
+        )
+    ) then
       return json_build_object('success', false, 'message', 'Vocês já estão conectados!');
     end if;
 
-    -- Create Connection
+    -- Create bidirectional connection rows
     insert into public.connections (user_id, connected_user_id, event_id)
     values (v_user_id, v_target_user_id, p_event_id);
 
-    -- Add Points (1 point for connection)
+    insert into public.connections (user_id, connected_user_id, event_id)
+    values (v_target_user_id, v_user_id, p_event_id);
+
+    -- Add points for both participants
     insert into public.user_event_points (user_id, event_id, points)
-    values (v_user_id, p_event_id, 1)
+    values
+      (v_user_id, p_event_id, 1),
+      (v_target_user_id, p_event_id, 1)
     on conflict (user_id, event_id)
-    do update set points = public.user_event_points.points + 1;
+    do update set points = public.user_event_points.points + excluded.points;
 
     return json_build_object('success', true, 'message', 'Nova conexão realizada!', 'points', 1);
   end if;
@@ -322,4 +338,3 @@ create index if not exists idx_scans_event_id on public.scans(event_id);
 create index if not exists idx_scans_user_id on public.scans(user_id);
 create index if not exists idx_user_event_points_event_id on public.user_event_points(event_id);
 create index if not exists idx_profiles_full_name on public.profiles(full_name);
-

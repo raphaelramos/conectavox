@@ -10,6 +10,15 @@ interface AvatarRequest {
     avatarUrl: string;
 }
 
+interface EdgeRuntimeLike {
+    waitUntil: (promise: Promise<unknown>) => void;
+}
+
+function hasWaitUntil(runtime: unknown): runtime is EdgeRuntimeLike {
+    if (typeof runtime !== "object" || runtime === null) return false;
+    return typeof (runtime as { waitUntil?: unknown }).waitUntil === "function";
+}
+
 async function getFileExtensionFromUrl(url: string): Promise<string> {
     try {
         const urlParts = url.split("?")[0].split(".");
@@ -115,18 +124,21 @@ serve(async (req: Request) => {
             }
         };
 
-        // Use EdgeRuntime.waitUntil to run the process in the background
-        // without blocking the response
-        // @ts-ignore - EdgeRuntime is available in Deno Deploy
-        EdgeRuntime.waitUntil(processPromise());
+        const edgeRuntime = (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime;
+        if (hasWaitUntil(edgeRuntime)) {
+            edgeRuntime.waitUntil(processPromise());
+        } else {
+            void processPromise();
+        }
 
         return responsePromise;
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         console.error("Error parsing request:", error);
         return new Response(
             JSON.stringify({
                 error: "Invalid request format",
-                details: error.message,
+                details: errorMessage,
             }),
             { status: 400, headers: { "Content-Type": "application/json" } }
         );

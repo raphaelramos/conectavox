@@ -4,19 +4,21 @@ import { useState, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Download, QrCode, X } from "lucide-react";
 import { getURL } from "@/lib/utils";
+import { buildQRCodeUrl } from "@/lib/qrcode";
 
 interface Props {
     name: string;
     identifier: string;
     points: number;
+    eventId: string;
 }
 
-export function ActivityQRDialog({ name, identifier, points }: Props) {
+export function ActivityQRDialog({ name, identifier, points, eventId }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const qrRef = useRef<HTMLCanvasElement>(null);
     const qrHighResRef = useRef<HTMLCanvasElement>(null);
 
-    const qrValue = `${getURL()}code/${identifier}`;
+    const qrValue = buildQRCodeUrl(getURL(), "activity", eventId, identifier);
 
     const downloadQR = () => {
         if (!qrHighResRef.current) return;
