@@ -9,6 +9,7 @@ create table public.profiles (
   avatar_url text,
   instagram text,
   tiktok text,
+  age_group text,
   updated_at timestamp with time zone,
   
   constraint username_length check (char_length(full_name) >= 3)
@@ -146,6 +147,10 @@ create policy "Users can view their own scans."
   on scans for select
   using ( (select auth.uid()) = user_id );
 
+create policy "Authenticated users can view mission scans."
+  on scans for select
+  using ( (select auth.uid()) is not null and type = 'mission' );
+
 
 -- FUNCTIONS FOR SCORING
 create or replace function process_scan(
@@ -248,6 +253,22 @@ begin
   return json_build_object('success', false, 'message', 'QR Code inválido ou não encontrado.');
 end;
 $$;
+
+-- Trigger to keep profiles.updated_at in sync
+create or replace function public.set_profile_updated_at()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger on_profiles_updated_at
+  before update on public.profiles
+  for each row execute procedure public.set_profile_updated_at();
 
 -- Trigger to create profile on signup
 create or replace function public.handle_new_user()

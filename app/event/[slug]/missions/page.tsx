@@ -71,7 +71,7 @@ export default async function MissionsPage({
                                     className="object-cover"
                                 />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-purple-500/10 text-purple-500">
+                                <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
                                     <Target className="w-12 h-12" />
                                 </div>
                             )}

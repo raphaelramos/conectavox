@@ -4,6 +4,7 @@
 - **Tailwind CSS v4** with `@theme` and CSS variables
 - **Tailwind Variants** (`tailwind-variants`) for variants
 - **Tailwind Merge** (`tailwind-merge`) for class merging
+- **@radix-ui** for components
 - **Lucide React** for icons
 - **Back-end**: Supabase folder
 

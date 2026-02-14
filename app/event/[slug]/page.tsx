@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { QrCode, Target, Users, Trophy, ChevronLeft, Calendar } from "lucide-react";
+import { QrCode, Target, Users, Trophy, ChevronLeft, Calendar, Check } from "lucide-react";
 import { IMAGES_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
+import { LevelProgressCard } from "@/components/level-progress-card";
 
 export default async function EventDashboard({
     params,
@@ -41,7 +42,7 @@ export default async function EventDashboard({
             title: "Missões",
             icon: Target,
             href: `/event/${slug}/missions`,
-            color: "bg-purple-500/10 text-purple-500",
+            color: "bg-primary/10 text-primary",
             description: "Complete tarefas",
         },
         {
@@ -59,11 +60,11 @@ export default async function EventDashboard({
             description: "Classificação",
         },
     ];
+    const participationSubtitle = "Leia QR Codes para ganhar pontos";
     const participationSteps = [
-        "Escaneie QR Codes para ganhar pontos",
         "Conecte-se com outros participantes",
         "Complete missões durante o evento",
-        "Encontre QRCodes escondidos para bônus",
+        "Encontre pontos com QRCodes identificados do evento",
     ];
 
     return (
@@ -103,17 +104,7 @@ export default async function EventDashboard({
                     </div>
                 </div>
 
-                {/* Score Card */}
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-primary to-purple-600 text-white shadow-xl shadow-primary/25 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl" />
-                    <div className="relative z-10">
-                        <p className="text-primary-foreground/80 font-medium">Sua Pontuação</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-bold">{points}</span>
-                            <span className="text-xl opacity-80">pts</span>
-                        </div>
-                    </div>
-                </div>
+                <LevelProgressCard points={points} />
 
                 {/* Menu Grid */}
                 <div className="grid grid-cols-2 gap-4">
@@ -140,14 +131,15 @@ export default async function EventDashboard({
                         <Target className="w-4 h-4 text-primary" />
                         Como Participar
                     </h3>
+                    <p className="text-sm text-muted-foreground">{participationSubtitle}</p>
                     <div className="space-y-2">
-                        {participationSteps.map((step, index) => (
+                        {participationSteps.map((step) => (
                             <div
                                 key={step}
                                 className="flex items-start gap-3 rounded-xl bg-background/70 border border-border/50 px-3 py-2.5"
                             >
-                                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
-                                    {index + 1}
+                                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/15 text-primary">
+                                    <Check className="w-3.5 h-3.5" />
                                 </span>
                                 <p className="text-sm text-muted-foreground">{step}</p>
                             </div>

@@ -123,7 +123,7 @@ export default async function EventAdminPage({
                 <section className="space-y-6">
                     <div className="flex items-center justify-between">
                         <h2 className="text-2xl font-bold flex items-center gap-2">
-                            <QrCode className="w-6 h-6 text-purple-500" />
+                            <QrCode className="w-6 h-6 text-primary" />
                             Pontos Ocultos
                         </h2>
                         <span className="text-sm text-muted-foreground">
@@ -137,7 +137,7 @@ export default async function EventAdminPage({
                         {hiddenPoints.map((point) => (
                             <div
                                 key={point.id}
-                                className="bg-card border border-border/50 rounded-2xl p-4 flex items-center justify-between hover:border-purple-500/50 transition-colors group"
+                                className="bg-card border border-border/50 rounded-2xl p-4 flex items-center justify-between hover:border-primary/50 transition-colors group"
                             >
                                 <div>
                                     <h3 className="font-semibold">{point.name}</h3>

@@ -163,7 +163,7 @@ export function QRCodeView({ user, event }: Props) {
                     {/* Scan Button */}
                     <button
                         onClick={() => setMode("scan")}
-                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
+                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-primary/70 text-white font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
                     >
                         <Camera className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                         Escanear QR Code

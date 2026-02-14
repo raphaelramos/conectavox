@@ -26,6 +26,7 @@ type DecodedQRPayload = {
     i: string;
 };
 const NOT_APP_QR_MESSAGE = "Este QRCode não pertence a esse app";
+const PROFILE_AGE_GROUP_VALUES = ["under_18", "18_or_more"] as const;
 
 function extractCodeToken(value: string) {
     const trimmedValue = value.trim();
@@ -114,6 +115,25 @@ export async function getUserPoints(eventId: string) {
         .eq("user_id", user.id)
         .eq("event_id", eventId)
         .single();
+
+    if (error) return 0;
+    return data?.points ?? 0;
+}
+
+export async function getUserPointsByUserId(eventId: string, userId: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return 0;
+
+    const { data, error } = await supabase
+        .from("user_event_points")
+        .select("points")
+        .eq("event_id", eventId)
+        .eq("user_id", userId)
+        .maybeSingle();
 
     if (error) return 0;
     return data?.points ?? 0;
@@ -210,6 +230,10 @@ export async function updateProfile(formData: FormData) {
     const full_name = formData.get("name") as string;
     let instagram = formData.get("instagram") as string;
     let tiktok = formData.get("tiktok") as string;
+    const rawAgeGroup = formData.get("age_group");
+    const age_group = typeof rawAgeGroup === "string" && PROFILE_AGE_GROUP_VALUES.includes(rawAgeGroup as (typeof PROFILE_AGE_GROUP_VALUES)[number])
+        ? rawAgeGroup
+        : null;
     const avatar_url = formData.get("avatar_url") as string;
 
     // Sanitize inputs: remove @ and full URLs, keep only username
@@ -220,7 +244,7 @@ export async function updateProfile(formData: FormData) {
         tiktok = tiktok.replace(/^@/, "").replace(/^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@?/, "").split("/")[0];
     }
 
-    const updates: ProfileUpdate = { full_name, instagram, tiktok };
+    const updates: ProfileUpdate = { full_name, instagram, tiktok, age_group };
     if (avatar_url) updates.avatar_url = avatar_url;
 
     const { error } = await supabase
@@ -338,6 +362,13 @@ type Activity = {
     created_at: string;
 };
 
+type UserCompletedMission = {
+    identifier: string;
+    name: string;
+    points: number;
+    completed_at: string;
+};
+
 export async function getActivities(eventId: string, type?: "mission" | "hidden_point") {
     const supabase = await createClient();
     let query = supabase
@@ -373,6 +404,55 @@ export async function getCompletedMissionIdentifiers(eventId: string) {
     if (error || !data) return [];
 
     return data.map((scan) => scan.qrcode_identifier);
+}
+
+export async function getUserCompletedMissions(eventId: string, userId: string, limit: number = 8) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const { data: scans, error: scansError } = await supabase
+        .from("scans")
+        .select("qrcode_identifier, created_at")
+        .eq("event_id", eventId)
+        .eq("user_id", userId)
+        .eq("type", "mission")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+    if (scansError || !scans?.length) return [];
+
+    const identifiers = scans.map((scan) => scan.qrcode_identifier);
+    const { data: activities, error: activitiesError } = await supabase
+        .from("activities")
+        .select("identifier, name, points")
+        .eq("event_id", eventId)
+        .in("identifier", identifiers);
+
+    if (activitiesError || !activities) return [];
+
+    const activityByIdentifier = new Map(
+        activities.map((activity) => [activity.identifier, activity]),
+    );
+
+    return scans.reduce<UserCompletedMission[]>((completedMissions, scan) => {
+        const activity = activityByIdentifier.get(scan.qrcode_identifier);
+        if (!activity?.identifier || !activity.name || activity.points === null || !scan.created_at) {
+            return completedMissions;
+        }
+
+        completedMissions.push({
+            identifier: activity.identifier,
+            name: activity.name,
+            points: activity.points,
+            completed_at: scan.created_at,
+        });
+
+        return completedMissions;
+    }, []);
 }
 
 export async function getActivity(id: string) {

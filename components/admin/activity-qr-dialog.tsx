@@ -62,7 +62,7 @@ export function ActivityQRDialog({ name, identifier, points, eventId }: Props) {
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="p-2 rounded-xl bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-colors"
+                className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                 title="Ver QR Code"
             >
                 <QrCode className="w-4 h-4" />

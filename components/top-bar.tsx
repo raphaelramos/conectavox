@@ -17,7 +17,7 @@ export async function TopBar() {
         <header className="flex justify-between items-center p-4 md:p-8 max-w-5xl mx-auto w-full">
             <div>
                 <Link href="/">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                         Conecta Vox
                     </h1>
                 </Link>

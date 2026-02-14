@@ -50,7 +50,7 @@ export default async function ConnectionsPage({
 
             <div className="space-y-4">
                 {connections.map((connection) => (
-                    <ConnectionCard key={connection.id} connection={connection} />
+                    <ConnectionCard key={connection.id} connection={connection} eventId={event.id} />
                 ))}
 
                 {connections.length === 0 && (
