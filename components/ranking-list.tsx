@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getRanking } from "@/app/actions";
 import { Database } from "@/types/database.types";
 import { AVATARS_BUCKET, getSupabaseImageUrl } from "@/utils/constants";
 import { twMerge } from "tailwind-merge";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
+import { Loader2 } from "lucide-react";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -25,31 +26,65 @@ interface Props {
     currentUserId?: string;
 }
 
+const RANKING_PAGE_SIZE = 20;
+
 export function RankingList({ initialRanking, eventId, currentUserId }: Props) {
     const [ranking, setRanking] = useState<RankingEntry[]>(initialRanking);
-    const [page, setPage] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(initialRanking.length >= 20);
+    const [hasMore, setHasMore] = useState(initialRanking.length >= RANKING_PAGE_SIZE);
     const [selectedEntry, setSelectedEntry] = useState<SelectedRankingEntry | null>(null);
+    const sentinelRef = useRef<HTMLDivElement | null>(null);
+    const loadingRef = useRef(false);
+    const pageRef = useRef(0);
+    const hasMoreRef = useRef(initialRanking.length >= RANKING_PAGE_SIZE);
 
-    const loadMore = async () => {
+    const loadMore = useCallback(async () => {
+        if (loadingRef.current || !hasMoreRef.current) return;
+
+        loadingRef.current = true;
         setLoading(true);
-        const nextPage = page + 1;
+        const nextPage = pageRef.current + 1;
+
         try {
             const newEntries = await getRanking(eventId, nextPage);
 
-            if (newEntries.length < 20) {
+            if (newEntries.length < RANKING_PAGE_SIZE) {
+                hasMoreRef.current = false;
                 setHasMore(false);
             }
 
             setRanking((prev) => [...prev, ...newEntries]);
-            setPage(nextPage);
+            pageRef.current = nextPage;
         } catch (error) {
             console.error("Failed to load more ranking entries", error);
         } finally {
+            loadingRef.current = false;
             setLoading(false);
         }
-    };
+    }, [eventId]);
+
+    useEffect(() => {
+        if (!hasMore) return;
+
+        const sentinel = sentinelRef.current;
+        if (!sentinel) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const firstEntry = entries[0];
+                if (!firstEntry?.isIntersecting) return;
+
+                void loadMore();
+            },
+            { rootMargin: "280px 0px", threshold: 0 },
+        );
+
+        observer.observe(sentinel);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [hasMore, loadMore]);
 
     const handleOpenProfileModal = (entry: RankingEntry, rank: number) => {
         setSelectedEntry({ ...entry, rank });
@@ -121,14 +156,13 @@ export function RankingList({ initialRanking, eventId, currentUserId }: Props) {
                     );
                 })}
 
-                {hasMore && (
-                    <button
-                        onClick={loadMore}
-                        disabled={loading}
-                        className="w-full py-3 rounded-xl bg-secondary hover:bg-secondary/80 text-sm font-medium transition-colors disabled:opacity-50"
-                    >
-                        {loading ? "Carregando..." : "Carregar Mais"}
-                    </button>
+                {hasMore && <div ref={sentinelRef} className="h-2" aria-hidden="true" data-slot="ranking-sentinel" />}
+
+                {loading && (
+                    <div className="w-full py-3 rounded-xl bg-secondary/50 text-sm font-medium text-muted-foreground flex items-center justify-center gap-2" data-slot="ranking-loading">
+                        <Loader2 className="size-4 animate-spin" />
+                        Carregando...
+                    </div>
                 )}
             </div>
 
