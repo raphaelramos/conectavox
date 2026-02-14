@@ -68,10 +68,14 @@ create policy "Admins can update events"
   on events for update
   using ( exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' ) );
 
+create policy "Admins can delete events"
+  on events for delete
+  using ( exists ( select 1 from user_roles where user_id = (select auth.uid()) and role = 'admin' ) );
+
 -- USER EVENT POINTS
 create table public.user_event_points (
   user_id uuid references profiles(id) on delete cascade not null,
-  event_id uuid references events(id) not null,
+  event_id uuid references events(id) on delete cascade not null,
   points integer default 0,
   primary key (user_id, event_id)
 );
@@ -85,7 +89,7 @@ create policy "User points are viewable by everyone."
 -- ACTIVITIES (Unified Missions & Hidden Points)
 create table public.activities (
   id uuid default uuid_generate_v4() primary key,
-  event_id uuid references events(id) not null,
+  event_id uuid references events(id) on delete cascade not null,
   type text not null check (type in ('mission', 'hidden_point')),
   name text not null,
   description text,
@@ -114,7 +118,7 @@ create table public.connections (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references profiles(id) on delete cascade not null,
   connected_user_id uuid references profiles(id) on delete cascade not null,
-  event_id uuid references events(id) not null,
+  event_id uuid references events(id) on delete cascade not null,
   created_at timestamp with time zone default now(),
   unique(user_id, connected_user_id, event_id)
 );
@@ -129,7 +133,7 @@ create policy "Users can view their own connections."
 create table public.scans (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references profiles(id) on delete cascade not null,
-  event_id uuid references events(id) not null,
+  event_id uuid references events(id) on delete cascade not null,
   qrcode_identifier uuid not null,
   type text not null, -- 'mission', 'hidden_point', 'connection'
   created_at timestamp with time zone default now(),

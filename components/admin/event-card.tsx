@@ -44,23 +44,21 @@ export function EventCard({ event }: EventCardProps) {
         >
             <Link
                 href={`/admin/events/${event.id}`}
-                className="absolute inset-0"
+                className="flex-1 min-w-0 pr-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-                <span className="sr-only">Gerenciar {event.name}</span>
-            </Link>
-            <div>
-                <h3 className="font-semibold">{event.name}</h3>
+                <h3 className="font-semibold truncate">{event.name}</h3>
                 <p className="text-sm text-muted-foreground">
                     {event.start_date && event.end_date
                         ? `${new Date(event.start_date).toLocaleDateString()} - ${new Date(event.end_date).toLocaleDateString()}`
                         : "Data não definida"}
                 </p>
-            </div>
-            <div className="flex items-center gap-2 relative z-10">
+            </Link>
+            <div className="flex items-center gap-2">
                 <button
                     onClick={handleDelete}
                     disabled={isDeleting}
                     className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                    aria-label={`Remover ${event.name}`}
                 >
                     <Trash2 className="w-4 h-4" />
                 </button>
