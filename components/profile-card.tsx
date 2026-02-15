@@ -145,7 +145,7 @@ export function ProfileCard({ user, eventId }: Props) {
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isLoading}
                                 className={twMerge(
-                                    "absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
+                                    "absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer",
                                     isLoading && "cursor-not-allowed opacity-100",
                                 )}
                                 aria-label="Alterar avatar"
@@ -282,6 +282,9 @@ export function ProfileCard({ user, eventId }: Props) {
                                             }))
                                         }
                                         placeholder="@seuinstagram"
+                                        spellCheck={false}
+                                        autoCorrect="off"
+                                        autoCapitalize="none"
                                     />
                                 </Form.Control>
                             </Form.Field>
@@ -298,6 +301,9 @@ export function ProfileCard({ user, eventId }: Props) {
                                             }))
                                         }
                                         placeholder="@seutiktok"
+                                        spellCheck={false}
+                                        autoCorrect="off"
+                                        autoCapitalize="none"
                                     />
                                 </Form.Control>
                             </Form.Field>
